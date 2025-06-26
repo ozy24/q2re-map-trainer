@@ -1,0 +1,129 @@
+{
+  "Q2": {
+    "weapons": {
+      "weapon_blaster": {"name": "Blaster", "type": "weapon"},
+      "weapon_shotgun": {"name": "Shotgun", "type": "weapon"},
+      "weapon_supershotgun": {"name": "Super Shotgun", "type": "weapon"},
+      "weapon_machinegun": {"name": "Machinegun", "type": "weapon"},
+      "weapon_chaingun": {"name": "Chaingun", "type": "weapon"},
+      "weapon_grenadelauncher": {"name": "Grenade Launcher", "type": "weapon"},
+      "weapon_rocketlauncher": {"name": "Rocket Launcher", "type": "weapon"},
+      "weapon_hyperblaster": {"name": "Hyperblaster", "type": "weapon"},
+      "weapon_railgun": {"name": "Railgun", "type": "weapon"},
+      "weapon_bfg": {"name": "BFG10K", "type": "weapon"},
+      "weapon_phalanx": {"name": "Phalanx Particle Cannon", "type": "weapon"},
+      "weapon_boomer": {"name": "Ionripper", "type": "weapon"}
+    },
+    "ammo": {
+      "ammo_shells": {"name": "Shotgun Shells", "type": "ammo"},
+      "ammo_bullets": {"name": "Bullets", "type": "ammo"},
+      "ammo_cells": {"name": "Cells", "type": "ammo"},
+      "ammo_rockets": {"name": "Rockets", "type": "ammo"},
+      "ammo_slugs": {"name": "Slugs", "type": "ammo"},
+      "ammo_magslug": {"name": "Mag Slug", "type": "ammo"},
+      "ammo_flechettes": {"name": "Flechettes", "type": "ammo"},
+      "ammo_grenades": {"name": "Grenades", "type": "ammo"},
+      "ammo_ired": {"name": "Ionized Energy", "type": "ammo"},
+      "ammo_nuke": {"name": "A-M Bomb", "type": "ammo"},
+      "ammo_prox": {"name": "Prox Mines", "type": "ammo"},
+      "ammo_tesla": {"name": "Tesla Mines", "type": "ammo"},
+      "ammo_trap": {"name": "Trap", "type": "ammo"}
+    },
+    "health": {
+      "item_health": {"name": "Health Pack", "type": "health"},
+      "item_health_small": {"name": "Small Health Pack", "type": "health"},
+      "item_health_large": {"name": "Large Health Pack", "type": "health"},
+      "item_health_mega": {"name": "Mega Health", "type": "health"}
+    },
+    "armor": {
+      "item_armor_shard": {"name": "Armor Shard", "type": "armorshard"},
+      "item_armor_jacket": {"name": "Green (Jacket) Armor", "type": "armor"},
+      "item_armor_combat": {"name": "Yellow (Combat) Armor", "type": "armor"},
+      "item_armor_body": {"name": "Red (Body) Armor", "type": "armor"}
+    },
+    "powerups": {
+      "item_quad": {"name": "Quad Damage", "type": "powerup"},
+      "item_invulnerability": {"name": "Invulnerability", "type": "powerup"},
+      "item_silencer": {"name": "Silencer", "type": "powerup"},
+      "item_breather": {"name": "Rebreather", "type": "powerup"},
+      "item_enviro": {"name": "Environmental Suit", "type": "powerup"},
+      "item_ancient_head": {"name": "Ancient Head", "type": "powerup"},
+      "item_adrenaline": {"name": "Adrenaline", "type": "powerup"},
+      "item_bandolier": {"name": "Bandolier", "type": "powerup"},
+      "item_pack": {"name": "Ammo Pack", "type": "powerup"},
+      "item_power_shield": {"name": "Power Shield", "type": "powerup"},
+      "item_power_screen": {"name": "Power Screen", "type": "powerup"}
+    },
+    "keys": {
+      "key_data_cd": {"name": "Data CD", "type": "key"},
+      "key_power_cube": {"name": "Power Cube", "type": "key"},
+      "key_pyramid": {"name": "Pyramid Key", "type": "key"},
+      "key_data_spinner": {"name": "Data Spinner", "type": "key"},
+      "key_pass": {"name": "Security Pass", "type": "key"},
+      "key_blue_key": {"name": "Blue Key", "type": "key"},
+      "key_red_key": {"name": "Red Key", "type": "key"},
+      "key_commander_head": {"name": "Commander's Head", "type": "key"},
+      "key_airstrike_target": {"name": "Airstrike Marker", "type": "key"}
+    },
+    "special": {
+      "item_quadfire": {"name": "QuadFire", "type": "special"},
+      "item_doppleganger": {"name": "Doppelganger", "type": "special"},
+      "item_ir_goggles": {"name": "IR Goggles", "type": "special"},
+      "item_double": {"name": "Double Damage", "type": "special"}
+    }
+  },
+  "Q3": {
+    "weapons": {
+      "weapon_gauntlet": {"name": "Gauntlet", "type": "weapon"},
+      "weapon_shotgun": {"name": "Shotgun", "type": "weapon"},
+      "weapon_machinegun": {"name": "Machinegun", "type": "weapon"},
+      "weapon_hmg": {"name": "Heavy Machinegun", "type": "weapon"},
+      "weapon_grenadelauncher": {"name": "Grenade Launcher", "type": "weapon"},
+      "weapon_proxlauncher": {"name": "Proximity Launcher", "type": "weapon"},
+      "weapon_rocketlauncher": {"name": "Rocket Launcher", "type": "weapon"},
+      "weapon_lightning": {"name": "Lightning Gun", "type": "weapon"},
+      "weapon_railgun": {"name": "Railgun", "type": "weapon"},
+      "weapon_plasmagun": {"name": "Plasma Gun", "type": "weapon"},
+      "weapon_bfg": {"name": "BFG10K", "type": "weapon"},
+      "weapon_nailgun": {"name": "Nailgun", "type": "weapon"},
+      "weapon_chaingun": {"name": "Chaingun", "type": "weapon"}
+    },
+    "ammo": {
+      "ammo_shells": {"name": "Shells", "type": "ammo"},
+      "ammo_bullets": {"name": "Bullets", "type": "ammo"},
+      "ammo_heavybullets": {"name": "Heavy Bullets", "type": "ammo"},
+      "ammo_grenades": {"name": "Grenades", "type": "ammo"},
+      "ammo_proxgrenades": {"name": "Prox Grenades", "type": "ammo"},
+      "ammo_rockets": {"name": "Rockets", "type": "ammo"},
+      "ammo_lightning": {"name": "Lightning Ammo", "type": "ammo"},
+      "ammo_slugs": {"name": "Slugs", "type": "ammo"},
+      "ammo_cells": {"name": "Cells", "type": "ammo"},
+      "ammo_nails": {"name": "Nails", "type": "ammo"},
+      "ammo_pack": {"name": "Ammo Pack", "type": "ammo"}
+    },
+    "health": {
+      "item_health_small": {"name": "Small Health", "type": "health"},
+      "item_health": {"name": "Health", "type": "health"},
+      "item_health_large": {"name": "Large Health", "type": "health"},
+      "item_health_mega": {"name": "Mega Health", "type": "health"}
+    },
+    "armor": {
+      "item_armor_shard": {"name": "Armor Shard", "type": "armor"},
+      "item_armor_combat": {"name": "Yellow Armor", "type": "armor"},
+      "item_armor_body": {"name": "Red Armor", "type": "armor"},
+      "item_armor_jacket": {"name": "Green Armor", "type": "armor"}
+    },
+    "powerups": {
+      "item_quad": {"name": "Quad Damage", "type": "powerup"},
+      "item_regen": {"name": "Regeneration", "type": "powerup"},
+      "item_haste": {"name": "Haste", "type": "powerup"},
+      "item_invis": {"name": "Invisibility", "type": "powerup"},
+      "item_enviro": {"name": "Battle Suit", "type": "powerup"},
+      "item_flight": {"name": "Flight", "type": "powerup"}
+    },
+    "holdables": {
+      "holdable_teleporter": {"name": "Personal Teleporter", "type": "holdable"},
+      "holdable_medkit": {"name": "Medkit", "type": "holdable"}
+    }
+  }
+} 

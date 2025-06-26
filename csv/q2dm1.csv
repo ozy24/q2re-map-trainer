@@ -1,0 +1,85 @@
+# Map: The Edge
+friendly_name,class_name,item_type,x,y,z
+Health Pack,item_health,health,1192,-24,912
+Health Pack,item_health,health,1232,-24,912
+Shotgun Shells,ammo_shells,ammo,1504,104,656
+Shotgun Shells,ammo_shells,ammo,1448,160,656
+Health Pack,item_health,health,1960,40,656
+Health Pack,item_health,health,1960,-16,656
+Slugs,ammo_slugs,ammo,1960,160,656
+Grenades,ammo_grenades,ammo,1672,488,528
+Grenades,ammo_grenades,ammo,1720,488,528
+Yellow (Combat) Armor,item_armor_combat,armor,1072,1280,912
+Rocket Launcher,weapon_rocketlauncher,weapon,704,104,912
+Cells,ammo_cells,ammo,1504,992,912
+Hyperblaster,weapon_hyperblaster,weapon,1472,1104,912
+Shotgun,weapon_shotgun,weapon,1688,96,528
+Bullets,ammo_bullets,ammo,1512,136,528
+Bullets,ammo_bullets,ammo,1512,88,528
+Bullets,ammo_bullets,ammo,1280,600,344
+Bullets,ammo_bullets,ammo,1240,600,344
+Machinegun,weapon_machinegun,weapon,1280,640,344
+Shotgun Shells,ammo_shells,ammo,1488,520,464
+Shotgun Shells,ammo_shells,ammo,1448,480,464
+Shotgun,weapon_shotgun,weapon,1528,576,464
+Large Health Pack,item_health_large,health,2040,832,400
+Rockets,ammo_rockets,ammo,2032,288,400
+Rockets,ammo_rockets,ammo,1952,288,400
+Rocket Launcher,weapon_rocketlauncher,weapon,1992,320,400
+Bullets,ammo_bullets,ammo,1824,928,464
+Bullets,ammo_bullets,ammo,1784,928,464
+Machinegun,weapon_machinegun,weapon,1888,936,528
+Large Health Pack,item_health_large,health,1248,360,656
+Large Health Pack,item_health_large,health,1248,320,656
+Yellow (Combat) Armor,item_armor_combat,armor,1440,992,656
+Armor Shard,item_armor_shard,armorshard,1824,648,912
+Armor Shard,item_armor_shard,armorshard,1824,688,912
+Armor Shard,item_armor_shard,armorshard,1824,728,912
+Armor Shard,item_armor_shard,armorshard,1824,608,912
+Shotgun Shells,ammo_shells,ammo,1888,720,1040
+Shotgun Shells,ammo_shells,ammo,1888,680,1040
+Super Shotgun,weapon_supershotgun,weapon,1504,160,656
+Health Pack,item_health,health,1304,1344,912
+Health Pack,item_health,health,1304,1304,912
+Armor Shard,item_armor_shard,armorshard,416,1232,784
+Armor Shard,item_armor_shard,armorshard,416,1272,784
+Armor Shard,item_armor_shard,armorshard,416,1312,784
+Armor Shard,item_armor_shard,armorshard,416,1192,784
+Grenades,ammo_grenades,ammo,800,1584,784
+Grenades,ammo_grenades,ammo,800,1536,784
+Grenade Launcher,weapon_grenadelauncher,weapon,1576,936,1040
+Rockets,ammo_rockets,ammo,416,1440,912
+Mega Health,item_health_mega,health,480,1376,912
+Grenades,ammo_grenades,ammo,1120,1408,848
+Ammo Pack,item_pack,powerup,736,1152,848
+Bullets,ammo_bullets,ammo,1336,1280,784
+Bullets,ammo_bullets,ammo,1336,1352,784
+Bullets,ammo_bullets,ammo,1336,1208,784
+Chaingun,weapon_chaingun,weapon,1400,1280,784
+Green (Jacket) Armor,item_armor_jacket,armor,1888,1128,1040
+Large Health Pack,item_health_large,health,1888,1184,1040
+Cells,ammo_cells,ammo,1848,-44,912
+Cells,ammo_cells,ammo,1816,-80,912
+Bullets,ammo_bullets,ammo,640,360,784
+Bullets,ammo_bullets,ammo,660,324,784
+Bullets,ammo_bullets,ammo,624,400,784
+Rockets,ammo_rockets,ammo,-80,336,656
+Large Health Pack,item_health_large,health,480,384,480
+Large Health Pack,item_health_large,health,440,384,480
+Small Health Pack,item_health_small,health,176,776,456
+Small Health Pack,item_health_small,health,176,816,456
+Small Health Pack,item_health_small,health,144,848,456
+Small Health Pack,item_health_small,health,160,736,456
+Bullets,ammo_bullets,ammo,368,1048,392
+Bullets,ammo_bullets,ammo,408,1048,392
+Armor Shard,item_armor_shard,armorshard,-24,552,608
+Armor Shard,item_armor_shard,armorshard,-48,592,608
+Armor Shard,item_armor_shard,armorshard,-88,608,608
+Large Health Pack,item_health_large,health,-80,432,656
+Rockets,ammo_rockets,ammo,-80,296,656
+Armor Shard,item_armor_shard,armorshard,120,-392,464
+Armor Shard,item_armor_shard,armorshard,120,-360,464
+Armor Shard,item_armor_shard,armorshard,120,-328,464
+Armor Shard,item_armor_shard,armorshard,120,-424,464
+Slugs,ammo_slugs,ammo,352,-416,464
+Railgun,weapon_railgun,weapon,240,-384,464
