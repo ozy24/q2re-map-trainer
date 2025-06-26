@@ -2304,7 +2304,7 @@ void PutClientInServer(edict_t *ent)
 	if (!level.map_trainer.welcome_message_shown)
 	{
 		level.map_trainer.welcome_message_time = level.time + 500_ms;
-		gi.Com_PrintFmt("Map Trainer: Scheduled welcome message for time {} in PutClientInServer\n", level.map_trainer.welcome_message_time.milliseconds());
+	
 	}
 }
 
@@ -2547,7 +2547,7 @@ void ClientBegin(edict_t *ent)
 	if (!level.map_trainer.welcome_message_shown)
 	{
 		level.map_trainer.welcome_message_time = level.time + 500_ms;
-		gi.Com_PrintFmt("Map Trainer: Scheduled welcome message for time {} in ClientBegin\n", level.map_trainer.welcome_message_time.milliseconds());
+	
 	}
 }
 
@@ -3846,7 +3846,7 @@ void ClientBeginServerFrame(edict_t *ent)
 		level.map_trainer.welcome_message_time > 0_ms && 
 		level.time >= level.map_trainer.welcome_message_time)
 	{
-		gi.Com_PrintFmt("Map Trainer: Showing welcome message to player at time {}\n", level.time.milliseconds());
+	
 		MapTrainer_ShowWelcomeMessage(ent);
 		level.map_trainer.welcome_message_shown = true;
 		level.map_trainer.welcome_message_time = 0_ms;

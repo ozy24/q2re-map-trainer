@@ -10,6 +10,11 @@ import json
 # Cache for loaded mappings to avoid re-reading JSON file
 _item_mappings_cache = None
 
+def pause_if_executable():
+    """Pause for user input if running as an executable"""
+    if hasattr(sys, '_MEIPASS'):
+        input("Press Enter to exit...")
+
 def get_resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
     try:
@@ -188,19 +193,21 @@ def main():
         # Running as Python script - use script directory
         base_dir = os.path.dirname(os.path.abspath(__file__))
     
-    bsp_folder = os.path.join(base_dir, "bsp")
+    bsp_folder = os.path.join(base_dir, "maps")
     csv_folder = os.path.join(base_dir, "csv")
 
     ensure_dir(csv_folder)
 
     if not os.path.exists(bsp_folder):
-        print(f"Error: BSP folder not found at {bsp_folder}")
+        print(f"Error: maps folder not found!")
+        pause_if_executable()
         return
 
     bsp_files = [f for f in os.listdir(bsp_folder) if f.endswith('.bsp')]
 
     if not bsp_files:
         print(f"No BSP files found in {bsp_folder}")
+        pause_if_executable()
         return
 
     # Parse command line arguments
@@ -218,6 +225,7 @@ def main():
             print("  --no-comments: Don't include map name as comment in CSV files")
             print("  Default: Simple names with map name comments")
             print("  Note: Only processes Quake 2 BSP files")
+            pause_if_executable()
             return
 
     print(f"Settings:")
@@ -235,6 +243,7 @@ def main():
             print(f"Error processing {bsp_file_path}: {e}")
 
     print(f"All BSP files processed. CSV files can be found in: {csv_folder}")
+    pause_if_executable()
 
 if __name__ == "__main__":
     main()

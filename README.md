@@ -20,9 +20,15 @@ For item training, item location data must be pulled from the map (.bsp) file an
 ## Usage
 
 - **Open trainer menu**: Press tab
-- **Set spawn point**: Type `setspawn` to save your current position
-- **Warp to spawn**: Type `warpspawn` to return to your saved position
+- **Set spawn point**: Type `savepos` to save your current position (recommended to bind to a key)
+- **Warp to spawn**: Type `loadpos` to return to your saved position (recommended to bind to a key)
 - **Configure categories**: Use the menu to enable/disable item types and speedometer for training
+
+## Converting maps
+
+Navigate to the maptrain folder and and locate bsp_to_csv.exe.  Place the map you want to train on in the /maps subfolder then run bsp_to_csv.exe (or bsp_to_csv.py if you have python installed).
+
+This will generate a corresponding csv file in the /csv folder.  That's it! You can now begin training on that map.
 
 ## Supported Maps
 

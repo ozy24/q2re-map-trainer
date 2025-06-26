@@ -616,7 +616,7 @@ bool Pickup_Ammo(edict_t *ent, edict_t *other)
 	if (is_map_trainer_target && other->client->pers.inventory[ent->item->id] >= other->client->pers.max_ammo[ent->item->tag])
 	{
 		// Don't actually add ammo, but allow the pickup for training purposes
-		gi.Com_PrintFmt("Map Trainer DEBUG: Allowing target ammo pickup despite being at max capacity\n");
+
 	}
 
 	if (weapon)
@@ -3955,9 +3955,6 @@ void MapTrainer_Init()
 	
 	// Initialize speedometer as enabled by default
 	level.map_trainer.speedometer_enabled = true;
-	gi.Com_PrintFmt("Map Trainer: Speedometer initialized as ENABLED\n");
-	
-	gi.Com_PrintFmt("Map Trainer: Mod loaded and initialized\n");
 }
 
 void MapTrainer_LoadCSV(const char *mapname)
@@ -3972,12 +3969,11 @@ void MapTrainer_LoadCSV(const char *mapname)
 	// Build CSV file path relative to the mod directory
 	auto csv_path = G_Fmt("maptrain/csv/{}.csv", mapname);
 	
-	gi.Com_PrintFmt("Map Trainer: Attempting to load CSV file: {}\n", csv_path);
+
 	
 	std::ifstream file(csv_path.data());
 	if (!file.is_open())
 	{
-		gi.Com_PrintFmt("Map Trainer: Could not open CSV file: {}\n", csv_path);
 		return;
 	}
 	
@@ -4041,11 +4037,10 @@ void MapTrainer_LoadCSV(const char *mapname)
 		
 		// Don't pick initial target - wait for first item pickup
 		
-		gi.Com_PrintFmt("Map Trainer: Loaded {} items, {} unique types\n", level.map_trainer.item_count, level.map_trainer.unique_item_count);
+
 	}
 	else
 	{
-		gi.Com_PrintFmt("Map Trainer: No items found in {}\n", csv_path);
 	}
 }
 
@@ -4163,46 +4158,24 @@ bool MapTrainer_IsItemCategoryEnabled(const char *class_name)
 // Check if an item entity is available (not respawning)
 bool MapTrainer_IsItemAvailable(const char *class_name, const vec3_t &position)
 {
-	gi.Com_PrintFmt("Map Trainer DEBUG: Checking availability for {} at ({}, {}, {})\n", 
-		class_name, position[0], position[1], position[2]);
-	
 	// Find all entities with matching classname and check if any are available
 	edict_t *ent = nullptr;
-	int entity_count = 0;
 	while ((ent = G_FindByString<&edict_t::classname>(ent, class_name)) != nullptr)
 	{
-		entity_count++;
 		vec3_t diff = ent->s.origin - position;
 		float distance = diff.length();
-		
-		gi.Com_PrintFmt("Map Trainer DEBUG: Found entity #{} at ({}, {}, {}) - distance: {}\n", 
-			entity_count, ent->s.origin[0], ent->s.origin[1], ent->s.origin[2], distance);
-		gi.Com_PrintFmt("Map Trainer DEBUG: Entity flags - svflags: {}, solid: {}, SVF_RESPAWNING: {}\n", 
-			(int)ent->svflags, (int)ent->solid, (ent->svflags & SVF_RESPAWNING) ? "YES" : "NO");
 		
 		// Check if this entity is at the expected position (within reasonable tolerance)
 		if (distance < 128.0f) // Allow some tolerance for position matching
 		{
-			gi.Com_PrintFmt("Map Trainer DEBUG: Position match! Checking availability...\n");
-			
 			// Check if this item is available (not respawning)
 			if (!(ent->svflags & SVF_RESPAWNING) && ent->solid != SOLID_NOT)
 			{
-				gi.Com_PrintFmt("Map Trainer DEBUG: Item is AVAILABLE!\n");
 				return true; // Found an available instance
 			}
-			else
-			{
-				gi.Com_PrintFmt("Map Trainer DEBUG: Item is NOT available (respawning or solid=SOLID_NOT)\n");
-			}
-		}
-		else
-		{
-			gi.Com_PrintFmt("Map Trainer DEBUG: Position too far ({})\n", distance);
 		}
 	}
 	
-	gi.Com_PrintFmt("Map Trainer DEBUG: No available instances found (checked {} entities)\n", entity_count);
 	return false; // No available instances found
 }
 
@@ -4219,33 +4192,26 @@ void MapTrainer_PickNewTarget()
 	}
 	
 	// Build a list of available unique item types
-	gi.Com_PrintFmt("Map Trainer DEBUG: Building list of available unique item types...\n");
 	std::vector<int32_t> available_unique_types;
 	for (int32_t i = 0; i < level.map_trainer.unique_item_count; i++)
 	{
 		map_trainer_unique_item_t *unique_item = &level.map_trainer.unique_items[i];
 		
-		gi.Com_PrintFmt("Map Trainer DEBUG: Checking unique item type: {} (previous: {})\n", 
-			unique_item->class_name, previous_class_name ? previous_class_name : "none");
-		
 		// Skip if this is the same type as previous (if we have more than one type)
 		if (level.map_trainer.unique_item_count > 1 && previous_class_name != nullptr &&
 			Q_strcasecmp(unique_item->class_name, previous_class_name) == 0)
 		{
-			gi.Com_PrintFmt("Map Trainer DEBUG: Skipping {} (same as previous)\n", unique_item->class_name);
 			continue;
 		}
 		
 		// Check if this item category is enabled
 		if (!MapTrainer_IsItemCategoryEnabled(unique_item->class_name))
 		{
-			gi.Com_PrintFmt("Map Trainer DEBUG: Skipping {} (category disabled)\n", unique_item->class_name);
 			continue;
 		}
 		
 		// Check if any instance of this item type is available
 		bool has_available_instance = false;
-		gi.Com_PrintFmt("Map Trainer DEBUG: Checking {} instances of {}\n", unique_item->instance_count, unique_item->class_name);
 		for (int32_t j = 0; j < unique_item->instance_count; j++)
 		{
 			int32_t item_index = unique_item->item_indices[j];
@@ -4253,7 +4219,6 @@ void MapTrainer_PickNewTarget()
 			
 			if (MapTrainer_IsItemAvailable(item->class_name, item->position))
 			{
-				gi.Com_PrintFmt("Map Trainer DEBUG: Found available instance of {}\n", unique_item->class_name);
 				has_available_instance = true;
 				break;
 			}
@@ -4261,19 +4226,13 @@ void MapTrainer_PickNewTarget()
 		
 		if (has_available_instance)
 		{
-			gi.Com_PrintFmt("Map Trainer DEBUG: Adding {} to available types\n", unique_item->class_name);
 			available_unique_types.push_back(i);
-		}
-		else
-		{
-			gi.Com_PrintFmt("Map Trainer DEBUG: No available instances of {}\n", unique_item->class_name);
 		}
 	}
 	
 	// If no available types found, wait and try again later
 	if (available_unique_types.empty())
 	{
-		gi.Com_PrintFmt("Map Trainer: No available items found, waiting for respawns...\n");
 		return;
 	}
 	
@@ -4297,7 +4256,6 @@ void MapTrainer_PickNewTarget()
 	
 	if (available_instances.empty())
 	{
-		gi.Com_PrintFmt("Map Trainer: No available instances found for selected item type\n");
 		return;
 	}
 	
@@ -4394,15 +4352,12 @@ void MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player)
 
 void MapTrainer_ShowWelcomeMessage(edict_t *player)
 {
-	gi.Com_PrintFmt("Map Trainer: MapTrainer_ShowWelcomeMessage called, initialized={}\n", level.map_trainer.initialized);
 	if (level.map_trainer.initialized)
 	{
-		gi.Com_PrintFmt("Map Trainer: Sending success message to player\n");
 		gi.LocClient_Print(player, PRINT_CENTER, "CSV file loaded.\nPlease pick up an item to begin.");
 	}
 	else
 	{
-		gi.Com_PrintFmt("Map Trainer: Sending failure message to player\n");
 		gi.LocClient_Print(player, PRINT_CENTER, "CSV file not found.");
 	}
 }
@@ -4447,7 +4402,6 @@ void MapTrainer_TogglePowerups(edict_t *ent, pmenuhnd_t *p)
 void MapTrainer_ToggleSpeedometer(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.speedometer_enabled = !level.map_trainer.speedometer_enabled;
-	gi.Com_PrintFmt("Map Trainer: Speedometer toggled to {}\n", level.map_trainer.speedometer_enabled ? "ENABLED" : "DISABLED");
 	PMenu_Update(ent);
 }
 
