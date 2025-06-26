@@ -1,46 +1,29 @@
-# Quake 2 Map Trainer
+# Quake 2 Rerelease Map Trainer
 
-A training mod for Quake 2 Rerelease that helps players learn and practice maps by providing guided item collection challenges.
+A training mod for Quake 2 Rerelease that helps players learn new maps and practice jumps.
 
 ## What it does
 
 - **Item Training**: Highlights specific items on the map for you to collect in sequence
-- **Map Learning**: Helps you learn item locations and efficient routes through maps
-- **Customizable Categories**: Toggle between weapons, ammo, health, armor, and powerups
-- **Spawn Management**: Save and warp to custom spawn points for practice
+- **Spawn Management**: Save and warp to custom spawn points for jump practice
 - **Speed Tracking**: Optional speedometer to monitor your movement
 
-The mod uses pre-generated CSV files containing item locations for each map, guiding you through structured practice sessions.
+For item training, item location data must be pulled from the map (.bsp) file and converted to .csv file using the bsp2csv tool.  There are a number of map .csv files ready to go, but in the event you need to learn a new map the conversion process is simple.
 
 ## Installation
 
 1. **Download** the latest release zip file
-2. **Extract** the contents to your Quake 2 directory
-3. **Launch** Quake 2 with the map trainer mod:
-   ```
-   quake2.exe +set game maptrain
-   ```
-   Or use the game's mod selection menu
+2. **Extract** the maptrain folder into your Q2RE rerelease folder
+   for example:  "c:\Program Files (x86)\Steam\steamapps\common\Quake 2\rerelease\"
+3. **Launch** Quake 2 and type the command "game maptrain" at the console. Now load a map to activate the mod.
 
 ## Usage
 
-- **Open trainer menu**: Type `maptrainermenu` in console or bind it to a key
+- **Open trainer menu**: Press tab
 - **Set spawn point**: Type `setspawn` to save your current position
 - **Warp to spawn**: Type `warpspawn` to return to your saved position
-- **Configure categories**: Use the menu to enable/disable item types for training
+- **Configure categories**: Use the menu to enable/disable item types and speedometer for training
 
 ## Supported Maps
 
-Currently includes training data for:
-- q2dm1 (The Edge)
-
-Additional maps can be added by generating CSV files with item locations.
-
-## Requirements
-
-- Quake 2 Rerelease
-- Compatible with single-player and practice modes
-
----
-
-*This mod is designed for training and practice purposes. Perfect for learning competitive maps or just exploring Quake 2's level design.* 
+The conversion tool should work with all maps but please let me know if one does not!
