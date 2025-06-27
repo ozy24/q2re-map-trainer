@@ -950,7 +950,7 @@ TOUCH(Touch_Item) (edict_t *ent, edict_t *other, const trace_t &tr, bool other_t
 				// ZOID
 
 	// Map Trainer: Only allow pickup of target items (or any item if first pickup)
-	if (level.map_trainer.initialized)
+	if (level.map_trainer.initialized && level.map_trainer.training_enabled)
 	{
 		if (!level.map_trainer.first_pickup && !MapTrainer_IsTargetItem(ent))
 		{
@@ -965,8 +965,9 @@ TOUCH(Touch_Item) (edict_t *ent, edict_t *other, const trace_t &tr, bool other_t
 
 	if (taken)
 	{
-		// Map Trainer: Check if this is the target item
-		MapTrainer_OnItemPickup(ent, other);
+		// Map Trainer: Check if this is the target item (only if training is enabled)
+		if (level.map_trainer.training_enabled)
+			MapTrainer_OnItemPickup(ent, other);
 		
 		// flash the screen
 		other->client->bonus_alpha = 0.25;
@@ -3937,6 +3938,9 @@ model="models/items/mega_h/tris.md2"
 
 void MapTrainer_Init()
 {
+	// Force weapon stay off for training mode
+	gi.cvar_set("g_dm_weapons_stay", "0");
+	
 	level.map_trainer.items = nullptr;
 	level.map_trainer.item_count = 0;
 	level.map_trainer.current_target_index = -1;
@@ -3955,6 +3959,12 @@ void MapTrainer_Init()
 	
 	// Initialize speedometer as enabled by default
 	level.map_trainer.speedometer_enabled = true;
+	
+	// Initialize training as enabled by default
+	level.map_trainer.training_enabled = true;
+	
+	// Initialize combine health packs as disabled by default (OFF = separated, ON = combined)
+	level.map_trainer.combine_health_packs = false;
 }
 
 void MapTrainer_LoadCSV(const char *mapname)
@@ -4044,6 +4054,35 @@ void MapTrainer_LoadCSV(const char *mapname)
 	}
 }
 
+bool MapTrainer_IsCombinableHealthPack(const char *class_name)
+{
+	// These health packs can be combined when the option is enabled
+	// Mega health is NOT included in this list
+	return (Q_strcasecmp(class_name, "item_health_small") == 0 ||
+			Q_strcasecmp(class_name, "item_health") == 0 ||
+			Q_strcasecmp(class_name, "item_health_large") == 0);
+}
+
+const char* MapTrainer_GetNormalizedClassName(const char *class_name)
+{
+	// If combine health packs is enabled, normalize health pack class names (combine them)
+	if (level.map_trainer.combine_health_packs && MapTrainer_IsCombinableHealthPack(class_name))
+	{
+		return "item_health_combined"; // Virtual class name for combined health packs
+	}
+	return class_name;
+}
+
+const char* MapTrainer_GetDisplayFriendlyName(const char *class_name, const char *original_friendly_name)
+{
+	// If combine health packs is enabled, use generic name for combinable health packs
+	if (level.map_trainer.combine_health_packs && MapTrainer_IsCombinableHealthPack(class_name))
+	{
+		return "Health Pack"; // Generic display name for combined health packs
+	}
+	return original_friendly_name;
+}
+
 void MapTrainer_BuildUniqueItemsList()
 {
 	if (!level.map_trainer.initialized || level.map_trainer.item_count == 0)
@@ -4060,10 +4099,13 @@ void MapTrainer_BuildUniqueItemsList()
 		map_trainer_item_t *current_item = &level.map_trainer.items[i];
 		bool found_existing = false;
 		
-		// Check if this class_name already exists in unique list
+		// Get normalized class name (handles health pack combining)
+		const char *normalized_class_name = MapTrainer_GetNormalizedClassName(current_item->class_name);
+		
+		// Check if this normalized class_name already exists in unique list
 		for (int32_t j = 0; j < level.map_trainer.unique_item_count; j++)
 		{
-			if (Q_strcasecmp(level.map_trainer.unique_items[j].class_name, current_item->class_name) == 0)
+			if (Q_strcasecmp(level.map_trainer.unique_items[j].class_name, normalized_class_name) == 0)
 			{
 				// Found existing unique item, add this instance to it
 				map_trainer_unique_item_t *unique_item = &level.map_trainer.unique_items[j];
@@ -4094,8 +4136,16 @@ void MapTrainer_BuildUniqueItemsList()
 			// Create new unique item entry
 			map_trainer_unique_item_t *unique_item = &level.map_trainer.unique_items[level.map_trainer.unique_item_count];
 			
-			strcpy(unique_item->class_name, current_item->class_name);
-			strcpy(unique_item->friendly_name, current_item->friendly_name);
+			strcpy(unique_item->class_name, normalized_class_name);
+			// For combined health packs, use a generic friendly name
+			if (level.map_trainer.combine_health_packs && MapTrainer_IsCombinableHealthPack(current_item->class_name))
+			{
+				strcpy(unique_item->friendly_name, "health pack");
+			}
+			else
+			{
+				strcpy(unique_item->friendly_name, current_item->friendly_name);
+			}
 			
 			// Allocate indices array with first instance
 			unique_item->item_indices = (int32_t*)gi.TagMalloc(sizeof(int32_t), TAG_LEVEL);
@@ -4125,11 +4175,12 @@ bool MapTrainer_IsItemCategoryEnabled(const char *class_name)
 		return level.map_trainer.ammo_enabled;
 	}
 	
-	// Health items
+	// Health items (including combined health pack virtual class)
 	if (strstr(class_name, "item_health") == class_name ||
 		Q_strcasecmp(class_name, "item_health_small") == 0 ||
 		Q_strcasecmp(class_name, "item_health_large") == 0 ||
-		Q_strcasecmp(class_name, "item_health_mega") == 0)
+		Q_strcasecmp(class_name, "item_health_mega") == 0 ||
+		Q_strcasecmp(class_name, "item_health_combined") == 0)
 	{
 		return level.map_trainer.health_enabled;
 	}
@@ -4184,11 +4235,11 @@ void MapTrainer_PickNewTarget()
 	if (!level.map_trainer.initialized || level.map_trainer.unique_item_count == 0)
 		return;
 	
-	// Get the class name of the previous target to avoid picking the same type
+	// Get the normalized class name of the previous target to avoid picking the same type
 	const char *previous_class_name = nullptr;
 	if (level.map_trainer.previous_target_index >= 0)
 	{
-		previous_class_name = level.map_trainer.items[level.map_trainer.previous_target_index].class_name;
+		previous_class_name = MapTrainer_GetNormalizedClassName(level.map_trainer.items[level.map_trainer.previous_target_index].class_name);
 	}
 	
 	// Build a list of available unique item types
@@ -4236,7 +4287,7 @@ void MapTrainer_PickNewTarget()
 		return;
 	}
 	
-	// Step 1: Pick a random available unique item type
+	// Step 1: Pick a random available unique item type (equal weighting for all types)
 	int32_t random_index = irandom(static_cast<int32_t>(available_unique_types.size()));
 	int32_t unique_type_index = available_unique_types[random_index];
 	map_trainer_unique_item_t *unique_item = &level.map_trainer.unique_items[unique_type_index];
@@ -4270,10 +4321,14 @@ void MapTrainer_PickNewTarget()
 	
 	map_trainer_item_t *target = &level.map_trainer.items[level.map_trainer.current_target_index];
 	
-	// Always show "travel from X to Y" if we have a previous target
-	if (level.map_trainer.previous_target_index >= 0)
+	// Always show "travel from X to Y" if we have a previous target (and training is enabled)
+	if (level.map_trainer.previous_target_index >= 0 && level.map_trainer.training_enabled)
 	{
 		map_trainer_item_t *previous = &level.map_trainer.items[level.map_trainer.previous_target_index];
+		
+		// Get display-friendly names (handles health pack combining)
+		const char *previous_display_name = MapTrainer_GetDisplayFriendlyName(previous->class_name, previous->friendly_name);
+		const char *target_display_name = MapTrainer_GetDisplayFriendlyName(target->class_name, target->friendly_name);
 		
 		// Send message to all players
 		for (uint32_t i = 0; i < game.maxclients; i++)
@@ -4281,7 +4336,7 @@ void MapTrainer_PickNewTarget()
 			edict_t *player = &g_edicts[1 + i];
 			if (!player->inuse || !player->client)
 				continue;
-			gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Travel from {} to {}", previous->friendly_name, target->friendly_name).data());
+			gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Travel from {} to {}", previous_display_name, target_display_name).data());
 		}
 	}
 	else
@@ -4300,10 +4355,14 @@ bool MapTrainer_IsTargetItem(edict_t *ent)
 		
 	map_trainer_item_t *target = &level.map_trainer.items[level.map_trainer.current_target_index];
 	
-	// Check if class name matches
-	if (Q_strcasecmp(ent->item->classname, target->class_name) == 0)
+	// Get normalized class names for comparison (handles health pack combining)
+	const char *ent_normalized = MapTrainer_GetNormalizedClassName(ent->item->classname);
+	const char *target_normalized = MapTrainer_GetNormalizedClassName(target->class_name);
+	
+	// Check if normalized class names match
+	if (Q_strcasecmp(ent_normalized, target_normalized) == 0)
 	{
-		return true; // Accept any matching class name
+		return true; // Accept any matching class name (including combined health packs)
 	}
 	
 	return false;
@@ -4354,7 +4413,14 @@ void MapTrainer_ShowWelcomeMessage(edict_t *player)
 {
 	if (level.map_trainer.initialized)
 	{
-		gi.LocClient_Print(player, PRINT_CENTER, "CSV file loaded.\nPlease pick up an item to begin.");
+		if (level.map_trainer.training_enabled)
+		{
+			gi.LocClient_Print(player, PRINT_CENTER, "CSV file loaded.\nPlease pick up an item to begin.");
+		}
+		else
+		{
+			gi.LocClient_Print(player, PRINT_CENTER, "Map Trainer loaded.\nTraining mode disabled - all items available.");
+		}
 	}
 	else
 	{
@@ -4405,6 +4471,27 @@ void MapTrainer_ToggleSpeedometer(edict_t *ent, pmenuhnd_t *p)
 	PMenu_Update(ent);
 }
 
+void MapTrainer_ToggleTraining(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.training_enabled = !level.map_trainer.training_enabled;
+	
+	// If training mode was just turned ON, reset the training state so player can pick up any item to begin
+	if (level.map_trainer.training_enabled)
+	{
+		level.map_trainer.first_pickup = true;
+		level.map_trainer.current_target_index = -1;
+		level.map_trainer.previous_target_index = -1;
+	}
+	
+	PMenu_Update(ent);
+}
+
+void MapTrainer_ToggleCombineHealthPacks(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.combine_health_packs = !level.map_trainer.combine_health_packs;
+	PMenu_Update(ent);
+}
+
 void MapTrainer_UpdateMenu(edict_t *ent)
 {
 	if (!ent->client->menu)
@@ -4413,28 +4500,66 @@ void MapTrainer_UpdateMenu(edict_t *ent)
 	pmenu_t *entries = ent->client->menu->entries;
 	
 	// Update toggle display text
-	Q_strlcpy(entries[2].text, G_Fmt("Weapons: {}", level.map_trainer.weapons_enabled ? "ON" : "OFF").data(), sizeof(entries[2].text));
-	Q_strlcpy(entries[3].text, G_Fmt("Ammo: {}", level.map_trainer.ammo_enabled ? "ON" : "OFF").data(), sizeof(entries[3].text));
-	Q_strlcpy(entries[4].text, G_Fmt("Health: {}", level.map_trainer.health_enabled ? "ON" : "OFF").data(), sizeof(entries[4].text));
-	Q_strlcpy(entries[5].text, G_Fmt("Armor: {}", level.map_trainer.armor_enabled ? "ON" : "OFF").data(), sizeof(entries[5].text));
-	Q_strlcpy(entries[6].text, G_Fmt("Powerups: {}", level.map_trainer.powerups_enabled ? "ON" : "OFF").data(), sizeof(entries[6].text));
-	Q_strlcpy(entries[7].text, G_Fmt("Speedometer: {}", level.map_trainer.speedometer_enabled ? "ON" : "OFF").data(), sizeof(entries[7].text));
+	Q_strlcpy(entries[2].text, G_Fmt("Training Mode: {}", level.map_trainer.training_enabled ? "ON" : "OFF").data(), sizeof(entries[2].text));
+	
+	if (level.map_trainer.training_enabled)
+	{
+		// Show item category options when training is enabled
+		Q_strlcpy(entries[3].text, G_Fmt("Weapons: {}", level.map_trainer.weapons_enabled ? "ON" : "OFF").data(), sizeof(entries[3].text));
+		Q_strlcpy(entries[4].text, G_Fmt("Ammo: {}", level.map_trainer.ammo_enabled ? "ON" : "OFF").data(), sizeof(entries[4].text));
+		Q_strlcpy(entries[5].text, G_Fmt("Health: {}", level.map_trainer.health_enabled ? "ON" : "OFF").data(), sizeof(entries[5].text));
+		Q_strlcpy(entries[6].text, G_Fmt("Armor: {}", level.map_trainer.armor_enabled ? "ON" : "OFF").data(), sizeof(entries[6].text));
+		Q_strlcpy(entries[7].text, G_Fmt("Powerups: {}", level.map_trainer.powerups_enabled ? "ON" : "OFF").data(), sizeof(entries[7].text));
+		Q_strlcpy(entries[8].text, G_Fmt("Combine Health Packs: {}", level.map_trainer.combine_health_packs ? "ON" : "OFF").data(), sizeof(entries[8].text));
+		
+		// Re-enable the function pointers
+		entries[3].SelectFunc = MapTrainer_ToggleWeapons;
+		entries[4].SelectFunc = MapTrainer_ToggleAmmo;
+		entries[5].SelectFunc = MapTrainer_ToggleHealth;
+		entries[6].SelectFunc = MapTrainer_ToggleArmor;
+		entries[7].SelectFunc = MapTrainer_TogglePowerups;
+		entries[8].SelectFunc = MapTrainer_ToggleCombineHealthPacks;
+	}
+	else
+	{
+		// Hide item category options when training is disabled
+		Q_strlcpy(entries[3].text, "", sizeof(entries[3].text));
+		Q_strlcpy(entries[4].text, "", sizeof(entries[4].text));
+		Q_strlcpy(entries[5].text, "", sizeof(entries[5].text));
+		Q_strlcpy(entries[6].text, "", sizeof(entries[6].text));
+		Q_strlcpy(entries[7].text, "", sizeof(entries[7].text));
+		Q_strlcpy(entries[8].text, "", sizeof(entries[8].text));
+		Q_strlcpy(entries[9].text, "", sizeof(entries[9].text)); // Hide the blank line too
+		
+		// Disable the function pointers
+		entries[3].SelectFunc = nullptr;
+		entries[4].SelectFunc = nullptr;
+		entries[5].SelectFunc = nullptr;
+		entries[6].SelectFunc = nullptr;
+		entries[7].SelectFunc = nullptr;
+		entries[8].SelectFunc = nullptr;
+	}
+	
+	Q_strlcpy(entries[10].text, G_Fmt("Speedometer: {}", level.map_trainer.speedometer_enabled ? "ON" : "OFF").data(), sizeof(entries[10].text));
 }
 
 pmenu_t maptrainer_menu[] = {
 	{ "Settings", PMENU_ALIGN_CENTER, nullptr },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Training Mode: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleTraining },
 	{ "Weapons: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleWeapons },
 	{ "Ammo: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleAmmo },
 	{ "Health: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleHealth },
 	{ "Armor: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleArmor },
 	{ "Powerups: ON", PMENU_ALIGN_LEFT, MapTrainer_TogglePowerups },
+			{ "Combine Health Packs: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleCombineHealthPacks },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Speedometer: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleSpeedometer },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Close Menu", PMENU_ALIGN_LEFT, MapTrainer_MenuClose },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
-	{ "v0.85 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
+	{ "v0.87 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
 	
 };
 

@@ -1191,6 +1191,10 @@ struct map_trainer_t
 	bool powerups_enabled;
 	// Speedometer
 	bool speedometer_enabled;
+	// Training mode toggle
+	bool training_enabled;
+	// Combine health packs toggle
+	bool combine_health_packs;
 };
 
 //
