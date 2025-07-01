@@ -680,10 +680,11 @@ bool Pickup_Health(edict_t *ent, edict_t *other)
 {
 	int health_flags = (ent->style ? ent->style : ent->item->tag);
 
-	// Map Trainer: Allow target health items to be picked up even at full health
+	// Map Trainer: Allow health items to be picked up even at full health when path training is enabled
 	bool is_map_trainer_target = level.map_trainer.initialized && MapTrainer_IsTargetItem(ent);
+	bool path_training_enabled = level.map_trainer.training_enabled && level.map_trainer.initialized;
 
-	if (!(health_flags & HEALTH_IGNORE_MAX) && !is_map_trainer_target)
+	if (!(health_flags & HEALTH_IGNORE_MAX) && !is_map_trainer_target && !path_training_enabled)
 		if (other->health >= other->max_health)
 			return false;
 
@@ -4142,7 +4143,10 @@ void MapTrainer_Init()
 	}
 }
 
-void MapTrainer_LoadCSV(const char *mapname)
+// Forward declaration for MapTrainer_FriendlyNameFromPickup
+static void MapTrainer_FriendlyNameFromPickup(const char* pickup_name, char* out, size_t out_size);
+
+void MapTrainer_BuildItemList(const char *mapname)
 {
 	// Clean up previous data
 	if (level.map_trainer.items)
@@ -4150,82 +4154,54 @@ void MapTrainer_LoadCSV(const char *mapname)
 		delete[] level.map_trainer.items;
 		level.map_trainer.items = nullptr;
 	}
-	
-	// Build CSV file path relative to the mod directory
-	auto csv_path = G_Fmt("maptrain/csv/{}.csv", mapname);
-	
 
-	
-	std::ifstream file(csv_path.data());
-	if (!file.is_open())
-	{
-		return;
-	}
-	
 	std::vector<map_trainer_item_t> temp_items;
-	std::string line;
-	bool header_skipped = false;
-	
-	while (std::getline(file, line))
+
+	// Enumerate all in-game entities (skip world and clients)
+	for (uint32_t i = 1; i < globals.num_edicts; i++)
 	{
-		// Skip comments and empty lines
-		if (line.empty() || line[0] == '#')
+		edict_t *ent = &g_edicts[i];
+		if (!ent->inuse || !ent->classname || !ent->item)
 			continue;
-			
-		// Skip header row
-		if (!header_skipped)
-		{
-			header_skipped = true;
+
+		// Skip entities with invalid classnames
+		if (Q_strcasecmp(ent->classname, "noclass") == 0 || Q_strcasecmp(ent->classname, "freed") == 0)
 			continue;
-		}
-		
-		// Parse CSV line: friendly_name,class_name,item_type,x,y,z
-		std::stringstream ss(line);
-		std::string friendly_name, class_name, item_type, x_str, y_str, z_str;
-		
-		if (std::getline(ss, friendly_name, ',') &&
-			std::getline(ss, class_name, ',') &&
-			std::getline(ss, item_type, ',') &&
-			std::getline(ss, x_str, ',') &&
-			std::getline(ss, y_str, ',') &&
-			std::getline(ss, z_str))
-		{
-			map_trainer_item_t item;
-			Q_strlcpy(item.friendly_name, friendly_name.c_str(), sizeof(item.friendly_name));
-			Q_strlcpy(item.class_name, class_name.c_str(), sizeof(item.class_name));
-			
-			// Parse position
-			item.position[0] = std::stof(x_str);
-			item.position[1] = std::stof(y_str);
-			item.position[2] = std::stof(z_str);
-			
-			temp_items.push_back(item);
-		}
+
+		// Only include actual items (entities with an item field)
+		// Only include items that are in the enabled categories
+		if (!MapTrainer_IsItemCategoryEnabled(ent->classname))
+			continue;
+
+		// Get friendly name from the actual item definition that the game uses
+		char friendly_name[64];
+		if (ent->item && ent->item->pickup_name)
+			MapTrainer_FriendlyNameFromPickup(ent->item->pickup_name, friendly_name, sizeof(friendly_name));
+		else
+			Q_strlcpy(friendly_name, ent->classname, sizeof(friendly_name));
+
+		map_trainer_item_t item;
+		Q_strlcpy(item.friendly_name, friendly_name, sizeof(item.friendly_name));
+		Q_strlcpy(item.class_name, ent->classname, sizeof(item.class_name));
+		item.position = ent->s.origin;
+
+		temp_items.push_back(item);
 	}
-	
-	file.close();
-	
-	// Copy to permanent storage
-	level.map_trainer.item_count = temp_items.size();
+
+	level.map_trainer.item_count = static_cast<int32_t>(temp_items.size());
 	if (level.map_trainer.item_count > 0)
 	{
 		level.map_trainer.items = new map_trainer_item_t[level.map_trainer.item_count];
-		for (int32_t i = 0; i < level.map_trainer.item_count; i++)
+		for (size_t i = 0; i < temp_items.size(); i++)
 		{
 			level.map_trainer.items[i] = temp_items[i];
 		}
-		
 		level.map_trainer.initialized = true;
-		
-		// Build unique items list for balanced randomness
 		MapTrainer_BuildUniqueItemsList();
-		
-		// Don't pick initial target - wait for first item pickup
-		
-
 	}
 	else
 	{
+		level.map_trainer.initialized = false;
 	}
 }
 
@@ -4269,7 +4245,7 @@ void MapTrainer_BuildUniqueItemsList()
 	level.map_trainer.unique_item_count = 0;
 	
 	// Process each item to build unique list
-	for (int32_t i = 0; i < level.map_trainer.item_count; i++)
+	for (size_t i = 0; i < static_cast<size_t>(level.map_trainer.item_count); i++)
 	{
 		map_trainer_item_t *current_item = &level.map_trainer.items[i];
 		bool found_existing = false;
@@ -4278,7 +4254,7 @@ void MapTrainer_BuildUniqueItemsList()
 		const char *normalized_class_name = MapTrainer_GetNormalizedClassName(current_item->class_name);
 		
 		// Check if this normalized class_name already exists in unique list
-		for (int32_t j = 0; j < level.map_trainer.unique_item_count; j++)
+		for (size_t j = 0; j < static_cast<size_t>(level.map_trainer.unique_item_count); j++)
 		{
 			if (Q_strcasecmp(level.map_trainer.unique_items[j].class_name, normalized_class_name) == 0)
 			{
@@ -4297,7 +4273,7 @@ void MapTrainer_BuildUniqueItemsList()
 				}
 				
 				// Add new index
-				new_indices[unique_item->instance_count] = i;
+				new_indices[unique_item->instance_count] = static_cast<int32_t>(i);
 				unique_item->item_indices = new_indices;
 				unique_item->instance_count++;
 				
@@ -4324,7 +4300,7 @@ void MapTrainer_BuildUniqueItemsList()
 			
 			// Allocate indices array with first instance
 			unique_item->item_indices = (int32_t*)gi.TagMalloc(sizeof(int32_t), TAG_LEVEL);
-			unique_item->item_indices[0] = i;
+			unique_item->item_indices[0] = static_cast<int32_t>(i);
 			unique_item->instance_count = 1;
 			
 			level.map_trainer.unique_item_count++;
@@ -4609,33 +4585,52 @@ void MapTrainer_MenuClose(edict_t *ent, pmenuhnd_t *p)
 	PMenu_Close(ent);
 }
 
+void MapTrainer_RestartPathTraining()
+{
+	if (level.map_trainer.training_enabled)
+	{
+		// Rebuild the item list with new category settings
+		MapTrainer_BuildItemList(level.mapname);
+		
+		// Reset the training state so player can pick up any item to begin
+		level.map_trainer.first_pickup = true;
+		level.map_trainer.current_target_index = -1;
+		level.map_trainer.previous_target_index = -1;
+	}
+}
+
 void MapTrainer_ToggleWeapons(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.weapons_enabled = !level.map_trainer.weapons_enabled;
+	MapTrainer_RestartPathTraining();
 	PMenu_Update(ent);
 }
 
 void MapTrainer_ToggleAmmo(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.ammo_enabled = !level.map_trainer.ammo_enabled;
+	MapTrainer_RestartPathTraining();
 	PMenu_Update(ent);
 }
 
 void MapTrainer_ToggleHealth(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.health_enabled = !level.map_trainer.health_enabled;
+	MapTrainer_RestartPathTraining();
 	PMenu_Update(ent);
 }
 
 void MapTrainer_ToggleArmor(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.armor_enabled = !level.map_trainer.armor_enabled;
+	MapTrainer_RestartPathTraining();
 	PMenu_Update(ent);
 }
 
 void MapTrainer_TogglePowerups(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.powerups_enabled = !level.map_trainer.powerups_enabled;
+	MapTrainer_RestartPathTraining();
 	PMenu_Update(ent);
 }
 
@@ -4665,20 +4660,20 @@ void MapTrainer_ToggleTraining(edict_t *ent, pmenuhnd_t *p)
 			gi.LocClient_Print(ent, PRINT_HIGH, "Item Timing Trainer automatically disabled.");
 		}
 		
-		MapTrainer_LoadCSV(level.mapname);
+		MapTrainer_BuildItemList(level.mapname);
 		level.map_trainer.first_pickup = true;
 		level.map_trainer.current_target_index = -1;
 		level.map_trainer.previous_target_index = -1;
 		
-		// Give immediate feedback about CSV loading
+		// Give immediate feedback about item loading
 		if (level.map_trainer.initialized)
 		{
-			gi.LocClient_Print(ent, PRINT_HIGH, "Item Path Trainer enabled. CSV file loaded successfully.");
+			gi.LocClient_Print(ent, PRINT_HIGH, "Item Path Trainer enabled. Items loaded from map.");
 		}
 		else
 		{
-			gi.LocClient_Print(ent, PRINT_HIGH, "CSV file not found for this map. Item Path Trainer disabled.");
-			level.map_trainer.training_enabled = false; // Auto-disable if no CSV
+			gi.LocClient_Print(ent, PRINT_HIGH, "No items found in map. Item Path Trainer disabled.");
+			level.map_trainer.training_enabled = false; // Auto-disable if no items
 		}
 	}
 	else
@@ -4703,6 +4698,7 @@ void MapTrainer_ToggleTraining(edict_t *ent, pmenuhnd_t *p)
 void MapTrainer_ToggleCombineHealthPacks(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.combine_health_packs = !level.map_trainer.combine_health_packs;
+	MapTrainer_RestartPathTraining();
 	PMenu_Update(ent);
 }
 
@@ -4906,7 +4902,6 @@ pmenu_t maptrainer_itemtiming_submenu[] = {
 	{ "Timing Trainer: Disabled", PMENU_ALIGN_LEFT, MapTrainer_ToggleTiming },
 	{ "Free Collect: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleFreeCollect },
 	{ "Debug Prints: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleTimingDebug },
-	{ "Jump Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenJumpTrainerSubmenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
@@ -5374,4 +5369,39 @@ void SetItemNames()
 		itemlist[i].powerup_wheel_index = cs_index;
 		cs_index++;
 	}
+}
+
+// Helper to convert $item_hyperblaster to Hyperblaster
+static void MapTrainer_FriendlyNameFromPickup(const char* pickup_name, char* out, size_t out_size)
+{
+	if (!pickup_name || !*pickup_name)
+	{
+		Q_strlcpy(out, "Item", out_size);
+		return;
+	}
+	if (pickup_name[0] == '$')
+	{
+		// Skip the '$' and 'item_' prefix if present
+		const char* name = pickup_name + 1;
+		if (strncmp(name, "item_", 5) == 0)
+			name += 5;
+		// Capitalize first letter, lowercase the rest, and replace underscores with spaces
+		if (*name)
+		{
+			char buf[64];
+			Q_strlcpy(buf, name, sizeof(buf));
+			buf[0] = toupper(buf[0]);
+			for (size_t i = 1; buf[i]; ++i)
+			{
+				if (buf[i] == '_')
+					buf[i] = ' ';
+				else
+					buf[i] = tolower(buf[i]);
+			}
+			Q_strlcpy(out, buf, out_size);
+			return;
+		}
+	}
+	// Fallback: just copy as is
+	Q_strlcpy(out, pickup_name, out_size);
 }
