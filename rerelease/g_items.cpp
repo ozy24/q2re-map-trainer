@@ -827,7 +827,9 @@ bool Pickup_Armor(edict_t *ent, edict_t *other)
 			// if we're already maxed out then we don't need the new armor
 			// Map Trainer: Allow target armor items to be picked up even when maxed out
 			bool is_map_trainer_target = level.map_trainer.initialized && MapTrainer_IsTargetItem(ent);
-			if (other->client->pers.inventory[old_armor_index] >= newcount && !is_map_trainer_target)
+			// Map Trainer: Allow pickup if free collect is enabled
+			bool free_collect_allowed = level.map_trainer.timing_enabled && level.map_trainer.free_collect_enabled;
+			if (other->client->pers.inventory[old_armor_index] >= newcount && !is_map_trainer_target && !free_collect_allowed)
 				return false;
 
 			// update current armor value
@@ -937,6 +939,8 @@ TOUCH(Touch_Item) (edict_t *ent, edict_t *other, const trace_t &tr, bool other_t
 	if (!ent->item->pickup)
 		return; // not a grabbable item?
 
+
+
 	// already got this instanced item
 	if (coop->integer && P_UseCoopInstancedItems())
 	{
@@ -968,6 +972,157 @@ TOUCH(Touch_Item) (edict_t *ent, edict_t *other, const trace_t &tr, bool other_t
 		// Map Trainer: Check if this is the target item (only if training is enabled)
 		if (level.map_trainer.training_enabled)
 			MapTrainer_OnItemPickup(ent, other);
+		
+		// Map Trainer: Item Timing Trainer - start timer for armor, weapon, and powerup pickups
+		if (level.map_trainer.timing_enabled && ent->item && ent->item->classname)
+		{
+			const char *classname = ent->item->classname;
+			const char *item_name = nullptr;
+			gtime_t respawn_time = 20_sec; // Default respawn time
+			
+			// Check for armor items (20 second respawn)
+			if (Q_strcasecmp(classname, "item_armor_jacket") == 0)
+			{
+				item_name = "Green Armor";
+				respawn_time = 20_sec;
+			}
+			else if (Q_strcasecmp(classname, "item_armor_combat") == 0)
+			{
+				item_name = "Yellow Armor";
+				respawn_time = 20_sec;
+			}
+			else if (Q_strcasecmp(classname, "item_armor_body") == 0)
+			{
+				item_name = "Red Armor";
+				respawn_time = 20_sec;
+			}
+			// Check for power armor items (20 second respawn)
+			else if (Q_strcasecmp(classname, "item_power_screen") == 0)
+			{
+				item_name = "Power Screen";
+				respawn_time = 20_sec;
+			}
+			else if (Q_strcasecmp(classname, "item_power_shield") == 0)
+			{
+				item_name = "Power Shield";
+				respawn_time = 20_sec;
+			}
+			// Check for major powerups (300 second respawn = 5 minutes)
+			else if (Q_strcasecmp(classname, "item_invulnerability") == 0)
+			{
+				item_name = "Invulnerability";
+				respawn_time = 300_sec;
+			}
+			else if (Q_strcasecmp(classname, "item_invisibility") == 0)
+			{
+				item_name = "Invisibility";
+				respawn_time = 300_sec;
+			}
+			// Check for lesser powerups (60 second respawn = 1 minute)
+			else if (Q_strcasecmp(classname, "item_quad") == 0)
+			{
+				item_name = "Quad Damage";
+				respawn_time = 60_sec;
+			}
+			else if (Q_strcasecmp(classname, "item_double") == 0)
+			{
+				item_name = "Double Damage";
+				respawn_time = 60_sec;
+			}
+			else if (Q_strcasecmp(classname, "item_quadfire") == 0)
+			{
+				item_name = "DualFire Damage";
+				respawn_time = 60_sec;
+			}
+			// Check for megahealth (special 25 second timing - 5 sec decay + 20 sec respawn)
+			else if (Q_strcasecmp(classname, "item_health_mega") == 0)
+			{
+				item_name = "Megahealth";
+				respawn_time = 25_sec; // Total time estimate (will be dynamic based on player health)
+			}
+			// Check for weapon items (30 second respawn - typical weapon respawn time)
+			else if (ent->item->pickup == Pickup_Weapon)
+			{
+				// Get weapon respawn time from cvar (default 30 seconds)
+				respawn_time = gtime_t::from_sec(g_weapon_respawn_time ? g_weapon_respawn_time->integer : 30);
+				
+				// Set friendly names for common weapons
+				if (Q_strcasecmp(classname, "weapon_shotgun") == 0)
+					item_name = "Shotgun";
+				else if (Q_strcasecmp(classname, "weapon_supershotgun") == 0)
+					item_name = "Super Shotgun";
+				else if (Q_strcasecmp(classname, "weapon_machinegun") == 0)
+					item_name = "Machinegun";
+				else if (Q_strcasecmp(classname, "weapon_chaingun") == 0)
+					item_name = "Chaingun";
+				else if (Q_strcasecmp(classname, "weapon_grenadelauncher") == 0)
+					item_name = "Grenade Launcher";
+				else if (Q_strcasecmp(classname, "weapon_rocketlauncher") == 0)
+					item_name = "Rocket Launcher";
+				else if (Q_strcasecmp(classname, "weapon_hyperblaster") == 0)
+					item_name = "Hyperblaster";
+				else if (Q_strcasecmp(classname, "weapon_railgun") == 0)
+					item_name = "Railgun";
+				else if (Q_strcasecmp(classname, "weapon_bfg10k") == 0)
+					item_name = "BFG10K";
+				else
+					item_name = "Weapon"; // Generic fallback
+			}
+				
+					if (item_name)
+		{
+			// Create or update timing entry for this item
+			map_trainer_t::timing_entry_t* timing_entry = MapTrainer_CreateOrUpdateTimingEntry(
+				classname, item_name, ent->s.origin, level.time, respawn_time);
+			
+			if (timing_entry)
+			{
+				// Special handling for megahealth
+				if (Q_strcasecmp(classname, "item_health_mega") == 0)
+				{
+					timing_entry->is_megahealth = true;
+					timing_entry->megahealth_player = other;
+					timing_entry->megahealth_decay_finished = false;
+					timing_entry->megahealth_respawn_start = 0_ms;
+					// Grace period lasts until health decay is finished (use very large value)
+					timing_entry->grace_period_end = level.time + 999999_sec;
+				}
+				else
+				{
+					timing_entry->is_megahealth = false;
+					timing_entry->megahealth_player = nullptr;
+					timing_entry->megahealth_decay_finished = false;
+					timing_entry->megahealth_respawn_start = 0_ms;
+				}
+				
+				if (level.map_trainer.timing_debug_enabled)
+				{
+					gi.LocClient_Print(other, PRINT_HIGH, G_Fmt("[DEBUG] Pickup: {} at ({:.1f}, {:.1f}, {:.1f}) time {:.2f} respawn {:.2f}{}",
+						item_name,
+						ent->s.origin[0], ent->s.origin[1], ent->s.origin[2],
+						level.time.seconds(),
+						respawn_time.seconds(),
+						timing_entry->is_megahealth ? " (MEGAHEALTH)" : ""
+					).data());
+				}
+			}
+			else
+			{
+				gi.LocClient_Print(other, PRINT_HIGH, "Warning: Too many concurrent timings active!");
+			}
+
+			// Show pickup message
+			if (Q_strcasecmp(classname, "item_health_mega") == 0)
+			{
+				gi.LocClient_Print(other, PRINT_HIGH, "Megahealth - 20s timer after health < 100");
+			}
+			else
+			{
+				gi.LocClient_Print(other, PRINT_HIGH, G_Fmt("{} back in {:.0f} seconds", 
+					item_name, respawn_time.seconds()).data());
+			}
+		}
+		}
 		
 		// flash the screen
 		other->client->bonus_alpha = 0.25;
@@ -3960,11 +4115,31 @@ void MapTrainer_Init()
 	// Initialize speedometer as enabled by default
 	level.map_trainer.speedometer_enabled = true;
 	
-	// Initialize training as enabled by default
-	level.map_trainer.training_enabled = true;
+	// Initialize training as disabled by default
+	level.map_trainer.training_enabled = false;
 	
 	// Initialize combine health packs as disabled by default (OFF = separated, ON = combined)
 	level.map_trainer.combine_health_packs = false;
+	
+	// Initialize timing trainer as disabled by default
+	level.map_trainer.timing_enabled = false;
+	
+	// Initialize free collect as enabled by default
+	level.map_trainer.free_collect_enabled = true;
+	// Initialize debug prints as disabled by default
+	level.map_trainer.timing_debug_enabled = false;
+	// Initialize timing entries array
+	level.map_trainer.timing_entry_count = 0;
+	for (int32_t i = 0; i < level.map_trainer.MAX_TIMING_ENTRIES; i++)
+	{
+		level.map_trainer.timing_entries[i].active = false;
+		level.map_trainer.timing_entries[i].pickup_time = 0_ms;
+		level.map_trainer.timing_entries[i].position = {};
+		level.map_trainer.timing_entries[i].respawn_time = 20_sec;
+		level.map_trainer.timing_entries[i].grace_period_end = 0_ms;
+		level.map_trainer.timing_entries[i].item_name = nullptr;
+		level.map_trainer.timing_entries[i].item_classname = nullptr;
+	}
 }
 
 void MapTrainer_LoadCSV(const char *mapname)
@@ -4411,20 +4586,19 @@ void MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player)
 
 void MapTrainer_ShowWelcomeMessage(edict_t *player)
 {
-	if (level.map_trainer.initialized)
-	{
-		if (level.map_trainer.training_enabled)
+	if (level.map_trainer.training_enabled && level.map_trainer.initialized)
 		{
 			gi.LocClient_Print(player, PRINT_CENTER, "CSV file loaded.\nPlease pick up an item to begin.");
 		}
-		else
+	else if (level.map_trainer.training_enabled && !level.map_trainer.initialized)
 		{
-			gi.LocClient_Print(player, PRINT_CENTER, "Map Trainer loaded.\nTraining mode disabled - all items available.");
-		}
+		gi.LocClient_Print(player, PRINT_CENTER, "CSV file not found for this map.\nTraining mode disabled.");
+		// Auto-disable training if CSV file wasn't found
+		level.map_trainer.training_enabled = false;
 	}
 	else
 	{
-		gi.LocClient_Print(player, PRINT_CENTER, "CSV file not found.");
+		gi.LocClient_Print(player, PRINT_CENTER, "Welcome to the Q2RE Map Trainer.\nPress Tab to open the training menu.");
 	}
 }
 
@@ -4475,12 +4649,52 @@ void MapTrainer_ToggleTraining(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.training_enabled = !level.map_trainer.training_enabled;
 	
-	// If training mode was just turned ON, reset the training state so player can pick up any item to begin
+	// If training mode was just turned ON, load CSV and reset the training state
 	if (level.map_trainer.training_enabled)
 	{
+		// Mutual exclusion: disable timing trainer if it's enabled
+		if (level.map_trainer.timing_enabled)
+		{
+			level.map_trainer.timing_enabled = false;
+			// Reset all active timings when disabled
+			for (int32_t i = 0; i < level.map_trainer.MAX_TIMING_ENTRIES; i++)
+			{
+				level.map_trainer.timing_entries[i].active = false;
+			}
+			level.map_trainer.timing_entry_count = 0;
+			gi.LocClient_Print(ent, PRINT_HIGH, "Item Timing Trainer automatically disabled.");
+		}
+		
+		MapTrainer_LoadCSV(level.mapname);
 		level.map_trainer.first_pickup = true;
 		level.map_trainer.current_target_index = -1;
 		level.map_trainer.previous_target_index = -1;
+		
+		// Give immediate feedback about CSV loading
+		if (level.map_trainer.initialized)
+		{
+			gi.LocClient_Print(ent, PRINT_HIGH, "Item Path Trainer enabled. CSV file loaded successfully.");
+		}
+		else
+		{
+			gi.LocClient_Print(ent, PRINT_HIGH, "CSV file not found for this map. Item Path Trainer disabled.");
+			level.map_trainer.training_enabled = false; // Auto-disable if no CSV
+		}
+	}
+	else
+	{
+		// Training mode turned OFF - clean up CSV data
+		if (level.map_trainer.items)
+		{
+			delete[] level.map_trainer.items;
+			level.map_trainer.items = nullptr;
+		}
+		level.map_trainer.item_count = 0;
+		level.map_trainer.initialized = false;
+		level.map_trainer.current_target_index = -1;
+		level.map_trainer.previous_target_index = -1;
+		
+		gi.LocClient_Print(ent, PRINT_HIGH, "Item Path Trainer disabled.");
 	}
 	
 	PMenu_Update(ent);
@@ -4492,7 +4706,100 @@ void MapTrainer_ToggleCombineHealthPacks(edict_t *ent, pmenuhnd_t *p)
 	PMenu_Update(ent);
 }
 
-void MapTrainer_UpdateMenu(edict_t *ent)
+void MapTrainer_ToggleTiming(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.timing_enabled = !level.map_trainer.timing_enabled;
+	
+	if (level.map_trainer.timing_enabled)
+	{
+		// Mutual exclusion: disable path trainer if it's enabled
+		if (level.map_trainer.training_enabled)
+		{
+			level.map_trainer.training_enabled = false;
+			// Clean up CSV data
+			if (level.map_trainer.items)
+			{
+				delete[] level.map_trainer.items;
+				level.map_trainer.items = nullptr;
+			}
+			level.map_trainer.item_count = 0;
+			level.map_trainer.initialized = false;
+			level.map_trainer.current_target_index = -1;
+			level.map_trainer.previous_target_index = -1;
+			gi.LocClient_Print(ent, PRINT_HIGH, "Item Path Trainer automatically disabled.");
+		}
+		
+		gi.LocClient_Print(ent, PRINT_HIGH, "Item Timing Trainer enabled.");
+	}
+	else
+	{
+		gi.LocClient_Print(ent, PRINT_HIGH, "Item Timing Trainer disabled.");
+		// Reset all active timings when disabled
+		for (int32_t i = 0; i < level.map_trainer.MAX_TIMING_ENTRIES; i++)
+		{
+			level.map_trainer.timing_entries[i].active = false;
+		}
+		level.map_trainer.timing_entry_count = 0;
+	}
+	
+	PMenu_Update(ent);
+}
+
+void MapTrainer_ToggleFreeCollect(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.free_collect_enabled = !level.map_trainer.free_collect_enabled;
+	
+	if (level.map_trainer.free_collect_enabled)
+	{
+		gi.LocClient_Print(ent, PRINT_HIGH, "Free Collect enabled.");
+	}
+	else
+	{
+		gi.LocClient_Print(ent, PRINT_HIGH, "Free Collect disabled.");
+	}
+	
+	PMenu_Update(ent);
+}
+
+void MapTrainer_ToggleTimingDebug(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.timing_debug_enabled = !level.map_trainer.timing_debug_enabled;
+	
+	if (level.map_trainer.timing_debug_enabled)
+	{
+		gi.LocClient_Print(ent, PRINT_HIGH, "Timing Debug enabled.");
+	}
+	else
+	{
+		gi.LocClient_Print(ent, PRINT_HIGH, "Timing Debug disabled.");
+	}
+	
+	PMenu_Update(ent);
+}
+
+void MapTrainer_SavePosition(edict_t *ent, pmenuhnd_t *p)
+{
+	// Execute savepos command and close menu
+	gi.AddCommandString("savepos\n");
+	PMenu_Close(ent);
+}
+
+void MapTrainer_LoadPosition(edict_t *ent, pmenuhnd_t *p)
+{
+	// Execute loadpos command and close menu
+	gi.AddCommandString("loadpos\n");
+	PMenu_Close(ent);
+}
+
+// Forward declaration
+void MapTrainer_OpenMenu(edict_t *ent);
+
+void MapTrainer_BackToMainMenu(edict_t *ent, pmenuhnd_t *p)
+{
+	MapTrainer_OpenMenu(ent);
+}
+
+void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 {
 	if (!ent->client->menu)
 		return;
@@ -4500,7 +4807,7 @@ void MapTrainer_UpdateMenu(edict_t *ent)
 	pmenu_t *entries = ent->client->menu->entries;
 	
 	// Update toggle display text
-	Q_strlcpy(entries[2].text, G_Fmt("Training Mode: {}", level.map_trainer.training_enabled ? "ON" : "OFF").data(), sizeof(entries[2].text));
+	Q_strlcpy(entries[2].text, G_Fmt("Path Trainer: {}", level.map_trainer.training_enabled ? "Enabled" : "Disabled").data(), sizeof(entries[2].text));
 	
 	if (level.map_trainer.training_enabled)
 	{
@@ -4539,14 +4846,12 @@ void MapTrainer_UpdateMenu(edict_t *ent)
 		entries[7].SelectFunc = nullptr;
 		entries[8].SelectFunc = nullptr;
 	}
-	
-	Q_strlcpy(entries[10].text, G_Fmt("Speedometer: {}", level.map_trainer.speedometer_enabled ? "ON" : "OFF").data(), sizeof(entries[10].text));
 }
 
-pmenu_t maptrainer_menu[] = {
-	{ "Settings", PMENU_ALIGN_CENTER, nullptr },
+pmenu_t maptrainer_itempathing_submenu[] = {
+	{ "Item Pathing Trainer", PMENU_ALIGN_CENTER, nullptr },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
-	{ "Training Mode: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleTraining },
+	{ "Training Mode: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleTraining },
 	{ "Weapons: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleWeapons },
 	{ "Ammo: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleAmmo },
 	{ "Health: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleHealth },
@@ -4554,12 +4859,90 @@ pmenu_t maptrainer_menu[] = {
 	{ "Powerups: ON", PMENU_ALIGN_LEFT, MapTrainer_TogglePowerups },
 			{ "Combine Health Packs: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleCombineHealthPacks },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
+	{ "v0.87 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
+};
+
+void MapTrainer_OpenItemPathingSubmenu(edict_t *ent, pmenuhnd_t *p)
+{
+	PMenu_Open(ent, maptrainer_itempathing_submenu, -1, sizeof(maptrainer_itempathing_submenu) / sizeof(pmenu_t), nullptr, MapTrainer_UpdateItemPathingSubmenu);
+}
+
+void MapTrainer_UpdateItemTimingSubmenu(edict_t *ent)
+{
+	if (!ent->client->menu)
+		return;
+		
+	pmenu_t *entries = ent->client->menu->entries;
+	
+	// Update toggle display text
+	Q_strlcpy(entries[2].text, G_Fmt("Timing Trainer: {}", level.map_trainer.timing_enabled ? "Enabled" : "Disabled").data(), sizeof(entries[2].text));
+	Q_strlcpy(entries[3].text, G_Fmt("Free Collect: {}", level.map_trainer.free_collect_enabled ? "ON" : "OFF").data(), sizeof(entries[3].text));
+	Q_strlcpy(entries[4].text, G_Fmt("Debug Prints: {}", level.map_trainer.timing_debug_enabled ? "ON" : "OFF").data(), sizeof(entries[4].text));
+}
+
+pmenu_t maptrainer_jumptrainer_submenu[] = {
+	{ "Jump Trainer", PMENU_ALIGN_CENTER, nullptr },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Save Position (savepos)", PMENU_ALIGN_LEFT, MapTrainer_SavePosition },
+	{ "Load Position (loadpos)", PMENU_ALIGN_LEFT, MapTrainer_LoadPosition },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
+	{ "v0.91 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
+};
+
+void MapTrainer_OpenJumpTrainerSubmenu(edict_t *ent, pmenuhnd_t *p)
+{
+	PMenu_Open(ent, maptrainer_jumptrainer_submenu, -1, sizeof(maptrainer_jumptrainer_submenu) / sizeof(pmenu_t), nullptr, nullptr);
+}
+
+pmenu_t maptrainer_itemtiming_submenu[] = {
+	{ "Item Timing Trainer", PMENU_ALIGN_CENTER, nullptr },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Timing Trainer: Disabled", PMENU_ALIGN_LEFT, MapTrainer_ToggleTiming },
+	{ "Free Collect: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleFreeCollect },
+	{ "Debug Prints: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleTimingDebug },
+	{ "Jump Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenJumpTrainerSubmenu },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
+	{ "v0.87 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
+};
+
+void MapTrainer_OpenItemTimingSubmenu(edict_t *ent, pmenuhnd_t *p)
+{
+	PMenu_Open(ent, maptrainer_itemtiming_submenu, -1, sizeof(maptrainer_itemtiming_submenu) / sizeof(pmenu_t), nullptr, MapTrainer_UpdateItemTimingSubmenu);
+}
+
+void MapTrainer_UpdateMenu(edict_t *ent)
+{
+	if (!ent->client->menu)
+		return;
+		
+	pmenu_t *entries = ent->client->menu->entries;
+	
+	// Update speedometer display text (index 6 in the main menu - after adding Item Jump Trainer)
+	Q_strlcpy(entries[6].text, G_Fmt("Speedometer: {}", level.map_trainer.speedometer_enabled ? "ON" : "OFF").data(), sizeof(entries[6].text));
+}
+
+pmenu_t maptrainer_menu[] = {
+	{ "Settings", PMENU_ALIGN_CENTER, nullptr },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Item Path Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenItemPathingSubmenu },
+	{ "Item Timing Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenItemTimingSubmenu },
+	{ "Item Jump Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenJumpTrainerSubmenu },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Speedometer: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleSpeedometer },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Close Menu", PMENU_ALIGN_LEFT, MapTrainer_MenuClose },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
-	{ "v0.87 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
+	{ "v0.91 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
 	
 };
 
@@ -4577,6 +4960,197 @@ void Cmd_MapTrainerMenu_f(edict_t *ent)
 }
 
 // ==================== SPEEDOMETER SYSTEM ====================
+
+// Helper function to find existing timing entry for an item
+map_trainer_t::timing_entry_t* MapTrainer_FindTimingEntry(const char *classname)
+{
+	if (!classname)
+		return nullptr;
+		
+	for (int32_t i = 0; i < level.map_trainer.MAX_TIMING_ENTRIES; i++)
+	{
+		if (level.map_trainer.timing_entries[i].active && 
+			level.map_trainer.timing_entries[i].item_classname &&
+			Q_strcasecmp(level.map_trainer.timing_entries[i].item_classname, classname) == 0)
+		{
+			return &level.map_trainer.timing_entries[i];
+		}
+	}
+	return nullptr;
+}
+
+// Helper function to create or update timing entry for an item
+map_trainer_t::timing_entry_t* MapTrainer_CreateOrUpdateTimingEntry(const char *classname, const char *item_name, 
+	const vec3_t &position, gtime_t pickup_time, gtime_t respawn_time)
+{
+	if (!classname || !item_name)
+		return nullptr;
+		
+	// First try to find existing entry
+	map_trainer_t::timing_entry_t* entry = MapTrainer_FindTimingEntry(classname);
+	
+	// If not found, create new entry
+	if (!entry)
+	{
+		// Find first inactive slot
+		for (int32_t i = 0; i < level.map_trainer.MAX_TIMING_ENTRIES; i++)
+		{
+			if (!level.map_trainer.timing_entries[i].active)
+			{
+				entry = &level.map_trainer.timing_entries[i];
+				level.map_trainer.timing_entry_count++;
+				break;
+			}
+		}
+		
+		// If no free slots, return nullptr (could implement LRU replacement later)
+		if (!entry)
+			return nullptr;
+	}
+	
+	// Update entry data
+	entry->active = true;
+	entry->pickup_time = pickup_time;
+	entry->position = position;
+	entry->respawn_time = respawn_time;
+	entry->grace_period_end = pickup_time + 5_sec;
+	entry->item_name = item_name;
+	entry->item_classname = classname;
+	
+	// Initialize megahealth fields to default values
+	entry->is_megahealth = false;
+	entry->megahealth_player = nullptr;
+	entry->megahealth_decay_finished = false;
+	entry->megahealth_respawn_start = 0_ms;
+	
+	return entry;
+}
+
+void MapTrainer_CheckArmorTiming(edict_t *player)
+{
+	if (!level.map_trainer.timing_enabled || !player->client)
+		return;
+
+	// Check all active timing entries
+	for (int32_t i = 0; i < level.map_trainer.MAX_TIMING_ENTRIES; i++)
+	{
+		map_trainer_t::timing_entry_t* entry = &level.map_trainer.timing_entries[i];
+		
+		if (!entry->active)
+			continue;
+			
+		// Skip megahealth entries (handled by separate function)
+		if (entry->is_megahealth)
+			continue;
+
+		// Check if we're still in the grace period (5 seconds after pickup)
+		if (level.time < entry->grace_period_end)
+			continue;
+
+		vec3_t diff = player->s.origin - entry->position;
+		float distance = diff.length();
+
+		if (distance <= 64.0f) // Within pickup radius
+		{
+			gtime_t current_time = level.time;
+			gtime_t expected_respawn_time = entry->pickup_time + entry->respawn_time;
+			float time_diff = (current_time - expected_respawn_time).seconds();
+
+			if (level.map_trainer.timing_debug_enabled)
+			{
+				// Print debug info every time player is in pickup range
+				gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("[DEBUG] In range of {}: player({:.1f},{:.1f},{:.1f}) item({:.1f},{:.1f},{:.1f}) dist {:.1f}",
+					entry->item_name ? entry->item_name : "?",
+					player->s.origin[0], player->s.origin[1], player->s.origin[2],
+					entry->position[0], entry->position[1], entry->position[2],
+					distance
+				).data());
+
+				// Print concise debug info only when in radius and timing check is triggered
+				gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("[DEBUG] {}: player({:.1f},{:.1f},{:.1f}) item({:.1f},{:.1f},{:.1f}) diff {:+.2f}",
+					entry->item_name ? entry->item_name : "?",
+					player->s.origin[0], player->s.origin[1], player->s.origin[2],
+					entry->position[0], entry->position[1], entry->position[2],
+					time_diff
+				).data());
+			}
+
+			gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("{}: {:+.2f}", entry->item_name ? entry->item_name : "?", time_diff).data());
+
+			// Reset this timing entry after showing result
+			entry->active = false;
+			level.map_trainer.timing_entry_count--;
+		}
+	}
+}
+
+void MapTrainer_CheckMegahealthTiming(edict_t *player)
+{
+	if (!level.map_trainer.timing_enabled || !player->client)
+		return;
+
+	// Check all active megahealth timing entries
+	for (int32_t i = 0; i < level.map_trainer.MAX_TIMING_ENTRIES; i++)
+	{
+		map_trainer_t::timing_entry_t* entry = &level.map_trainer.timing_entries[i];
+		
+		if (!entry->active || !entry->is_megahealth)
+			continue;
+			
+		// Verify this entry belongs to this player
+		if (entry->megahealth_player != player)
+			continue;
+
+		// Phase 1: Check if health decay has finished
+		if (!entry->megahealth_decay_finished)
+		{
+			// Check if player's health has dropped to max_health or below
+			if (player->health <= player->max_health)
+			{
+				// Health decay finished, start the 20-second respawn timer
+				entry->megahealth_decay_finished = true;
+				entry->megahealth_respawn_start = level.time;
+				entry->grace_period_end = level.time; // End grace period now
+				
+				if (level.map_trainer.timing_debug_enabled)
+				{
+					gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("[DEBUG] Megahealth decay finished at {:.2f}, starting 20s respawn timer",
+						level.time.seconds()).data());
+				}
+			}
+			// Still in decay phase, continue monitoring
+			continue;
+		}
+
+		// Phase 2: Check if player is near the megahealth spawn point for timing results
+		vec3_t diff = player->s.origin - entry->position;
+		float distance = diff.length();
+
+		if (distance <= 64.0f) // Within pickup radius
+		{
+			gtime_t current_time = level.time;
+			gtime_t expected_respawn_time = entry->megahealth_respawn_start + 20_sec;
+			float time_diff = (current_time - expected_respawn_time).seconds();
+
+			if (level.map_trainer.timing_debug_enabled)
+			{
+				gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("[DEBUG] Megahealth timing check: decay_start={:.2f} respawn_start={:.2f} expected={:.2f} now={:.2f} diff={:+.2f}",
+					entry->pickup_time.seconds(),
+					entry->megahealth_respawn_start.seconds(), 
+					expected_respawn_time.seconds(),
+					current_time.seconds(),
+					time_diff
+				).data());
+			}
+
+			gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Megahealth: {:+.2f}", time_diff).data());
+
+			// Reset this timing entry after showing result
+			entry->active = false;
+			level.map_trainer.timing_entry_count--;
+		}
+	}
+}
 
 void MapTrainer_UpdateSpeedometer(edict_t *player)
 {

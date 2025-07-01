@@ -3854,6 +3854,12 @@ void ClientBeginServerFrame(edict_t *ent)
 	
 	// Map Trainer: Update speedometer if enabled
 	MapTrainer_UpdateSpeedometer(ent);
+	
+	// Map Trainer: Check armor timing if enabled
+	MapTrainer_CheckArmorTiming(ent);
+	
+	// Map Trainer: Check megahealth timing if enabled
+	MapTrainer_CheckMegahealthTiming(ent);
 }
 /*
 ==============

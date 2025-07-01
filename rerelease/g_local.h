@@ -1195,6 +1195,31 @@ struct map_trainer_t
 	bool training_enabled;
 	// Combine health packs toggle
 	bool combine_health_packs;
+	// Timing trainer toggle
+	bool timing_enabled;
+	// Free collect toggle - allows picking up armor even at max
+	bool free_collect_enabled;
+	// Debug prints toggle for timing trainer
+	bool timing_debug_enabled;
+	// Timing trainer data - support for multiple concurrent timings
+	struct timing_entry_t {
+		bool active;
+		gtime_t pickup_time;
+		vec3_t position;
+		gtime_t respawn_time;
+		gtime_t grace_period_end;
+		const char *item_name;
+		const char *item_classname; // Used as unique identifier
+		
+		// Megahealth-specific fields
+		bool is_megahealth;
+		edict_t *megahealth_player; // Player who picked up the megahealth
+		bool megahealth_decay_finished; // True when player health <= 100
+		gtime_t megahealth_respawn_start; // When the 20-second respawn timer started
+	};
+	static constexpr int32_t MAX_TIMING_ENTRIES = 32; // Support up to 32 concurrent timings
+	timing_entry_t timing_entries[MAX_TIMING_ENTRIES];
+	int32_t timing_entry_count;
 };
 
 //
@@ -2097,6 +2122,11 @@ void      MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player);
 void      MapTrainer_ShowWelcomeMessage(edict_t *player);
 void      MapTrainer_OpenMenu(edict_t *ent);
 void      MapTrainer_UpdateSpeedometer(edict_t *player);
+void      MapTrainer_CheckArmorTiming(edict_t *player);
+void      MapTrainer_CheckMegahealthTiming(edict_t *player);
+map_trainer_t::timing_entry_t* MapTrainer_FindTimingEntry(const char *classname);
+map_trainer_t::timing_entry_t* MapTrainer_CreateOrUpdateTimingEntry(const char *classname, const char *item_name, 
+	const vec3_t &position, gtime_t pickup_time, gtime_t respawn_time);
 void      Cmd_MapTrainerMenu_f(edict_t *ent);
 void      Cmd_SetSpawn_f(edict_t *ent);
 void      Cmd_WarpSpawn_f(edict_t *ent);
@@ -2716,6 +2746,13 @@ constexpr spawnflags_t SPAWNFLAG_LANDMARK_KEEP_Z = 1_spawnflag;
 #include "ctf/g_ctf.h"
 #include "ctf/p_ctf_menu.h"
 // ZOID
+
+// Map trainer functions that need pmenuhnd_t
+void      MapTrainer_ToggleTimingDebug(edict_t *ent, pmenuhnd_t *p);
+void      MapTrainer_SavePosition(edict_t *ent, pmenuhnd_t *p);
+void      MapTrainer_LoadPosition(edict_t *ent, pmenuhnd_t *p);
+void      MapTrainer_OpenJumpTrainerSubmenu(edict_t *ent, pmenuhnd_t *p);
+
 //============================================================================
 
 // client_t->anim_priority

@@ -1275,7 +1275,6 @@ void SpawnEntities(const char *mapname, const char *entities, const char *spawnp
 	
 	// Initialize Map Trainer System
 	MapTrainer_Init();
-	MapTrainer_LoadCSV(level.mapname);
 }
 
 //===================================================================
