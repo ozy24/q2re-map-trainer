@@ -114,3 +114,5 @@ config.local
 # CSV data files (uncomment if you don't want to commit the CSV data)
 # csv/
 # */csv/ 
+
+*.pdb
