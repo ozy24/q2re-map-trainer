@@ -2,7 +2,7 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>D:\Users\Chris\OneDrive\Code\Projects\q2re-map-trainer\maptrainer\game_x64.dll</FullPath>
+      <FullPath>D:\Code\Projects\q2re-map-trainer\q2re-map-trainer\game_x64.dll</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />
