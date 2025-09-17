@@ -1,4 +1,6 @@
+# ------------------------------
 # Compiled Object files
+# ------------------------------
 *.o
 *.obj
 
@@ -16,18 +18,23 @@
 *.out
 *.app
 
-# Visual Studio files
+# ------------------------------
+# Visual Studio / VSCode
+# ------------------------------
 *.vcxproj.user
 *.vcxproj.filters
-*.sln.docstates
 *.suo
 *.user
 *.userosscache
-*.sln.docstates
 .vs/
-.vscode/
 
+# VSCode (ignore everything but allow settings.json)
+.vscode/*
+!.vscode/settings.json
+
+# ------------------------------
 # Build directories
+# ------------------------------
 build/
 Build/
 BUILD/
@@ -43,7 +50,9 @@ MinSizeRel/
 maptrainer/build/
 maptrainer/dist/
 
+# ------------------------------
 # CMake
+# ------------------------------
 CMakeCache.txt
 CMakeFiles/
 CMakeScripts/
@@ -53,27 +62,47 @@ compile_commands.json
 CTestTestfile.cmake
 _deps/
 
+# ------------------------------
 # vcpkg
+# ------------------------------
 vcpkg_installed/
 buildtrees/
 downloads/
 packages/
 installed/
 
+# ------------------------------
 # Game-specific compiled files
+# ------------------------------
 *.exp
 game_x64.dll
 game_x64.lib
 game_x64.exp
 
+# ------------------------------
+# MSVC extra artifacts
+# ------------------------------
+*.ilk
+*.idb
+
+# ------------------------------
+# Python (if any tooling/scripts)
+# ------------------------------
+__pycache__/
+*.pyc
+*.pyo
+
+# ------------------------------
 # Temporary files
+# ------------------------------
 *.tmp
 *.temp
-*~
 *.swp
 *.swo
 
+# ------------------------------
 # OS generated files
+# ------------------------------
 .DS_Store
 .DS_Store?
 ._*
@@ -83,21 +112,28 @@ ehthumbs.db
 Thumbs.db
 desktop.ini
 
-# IDE files
+# ------------------------------
+# IDE-specific (other)
+# ------------------------------
 *.cbp
 *.layout
 *.depend
 *.workspace
 
+# ------------------------------
 # Logs
+# ------------------------------
 *.log
 
+# ------------------------------
 # Backup files
+# ------------------------------
 *.bak
 *.backup
-*~
 
-# Archives (you probably don't want to commit these)
+# ------------------------------
+# Archives (you probably don't want these)
+# ------------------------------
 *.7z
 *.dmg
 *.gz
@@ -107,12 +143,20 @@ desktop.ini
 *.tar
 *.zip
 
-# Local configuration files that shouldn't be shared
+# ------------------------------
+# Local configuration files
+# ------------------------------
 config.local
 *.local
 
-# CSV data files (uncomment if you don't want to commit the CSV data)
+# ------------------------------
+# Data files (optional)
+# Uncomment if you don’t want CSVs in repo
+# ------------------------------
 # csv/
-# */csv/ 
+# */csv/
 
+# ------------------------------
+# Debug symbols
+# ------------------------------
 *.pdb
