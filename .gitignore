@@ -1,0 +1,116 @@
+# Compiled Object files
+*.o
+*.obj
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Visual Studio files
+*.vcxproj.user
+*.vcxproj.filters
+*.sln.docstates
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+
+# Build directories
+build/
+Build/
+BUILD/
+out/
+x64/
+x86/
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+
+# Map trainer specific build/dist directories
+maptrainer/build/
+maptrainer/dist/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# vcpkg
+vcpkg_installed/
+buildtrees/
+downloads/
+packages/
+installed/
+
+# Game-specific compiled files
+*.exp
+game_x64.dll
+game_x64.lib
+game_x64.exp
+
+# Temporary files
+*.tmp
+*.temp
+*~
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE files
+*.cbp
+*.layout
+*.depend
+*.workspace
+
+# Logs
+*.log
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Archives (you probably don't want to commit these)
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Local configuration files that shouldn't be shared
+config.local
+*.local
+
+# CSV data files (uncomment if you don't want to commit the CSV data)
+# csv/
+# */csv/ 
