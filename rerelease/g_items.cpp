@@ -4124,6 +4124,8 @@ void MapTrainer_Init()
 	
 	// Initialize timing trainer as disabled by default
 	level.map_trainer.timing_enabled = false;
+	// Initialize bhop trainer as disabled by default
+	level.map_trainer.bhop_enabled = false;
 	
 	// Initialize free collect as enabled by default
 	level.map_trainer.free_collect_enabled = true;
@@ -4884,16 +4886,34 @@ pmenu_t maptrainer_jumptrainer_submenu[] = {
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Save Position (savepos)", PMENU_ALIGN_LEFT, MapTrainer_SavePosition },
 	{ "Load Position (loadpos)", PMENU_ALIGN_LEFT, MapTrainer_LoadPosition },
+    { "Bhop Consistency: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleBhopTrainer },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
-	{ "v0.91 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
+	{ "v0.92 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
 };
 
 void MapTrainer_OpenJumpTrainerSubmenu(edict_t *ent, pmenuhnd_t *p)
 {
-	PMenu_Open(ent, maptrainer_jumptrainer_submenu, -1, sizeof(maptrainer_jumptrainer_submenu) / sizeof(pmenu_t), nullptr, nullptr);
+    PMenu_Open(ent, maptrainer_jumptrainer_submenu, -1, sizeof(maptrainer_jumptrainer_submenu) / sizeof(pmenu_t), nullptr, MapTrainer_UpdateJumpTrainerSubmenu);
+}
+
+void MapTrainer_ToggleBhopTrainer(edict_t *ent, pmenuhnd_t *p)
+{
+    level.map_trainer.bhop_enabled = !level.map_trainer.bhop_enabled;
+    gi.LocClient_Print(ent, PRINT_HIGH, "Bhop trainer {}", level.map_trainer.bhop_enabled ? "enabled" : "disabled");
+    PMenu_Update(ent);
+}
+
+void MapTrainer_UpdateJumpTrainerSubmenu(edict_t *ent)
+{
+    if (!ent->client || !ent->client->menu)
+        return;
+
+    pmenu_t *entries = ent->client->menu->entries;
+    // entry index 4 is bhop toggle in this submenu
+    Q_strlcpy(entries[4].text, G_Fmt("Bhop Consistency: {}", level.map_trainer.bhop_enabled ? "ON" : "OFF").data(), sizeof(entries[4].text));
 }
 
 pmenu_t maptrainer_itemtiming_submenu[] = {

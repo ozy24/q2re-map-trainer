@@ -1201,6 +1201,8 @@ struct map_trainer_t
 	bool free_collect_enabled;
 	// Debug prints toggle for timing trainer
 	bool timing_debug_enabled;
+	// Bhop trainer toggle
+	bool bhop_enabled;
 	// Timing trainer data - support for multiple concurrent timings
 	struct timing_entry_t {
 		bool active;
@@ -2752,6 +2754,8 @@ void      MapTrainer_ToggleTimingDebug(edict_t *ent, pmenuhnd_t *p);
 void      MapTrainer_SavePosition(edict_t *ent, pmenuhnd_t *p);
 void      MapTrainer_LoadPosition(edict_t *ent, pmenuhnd_t *p);
 void      MapTrainer_OpenJumpTrainerSubmenu(edict_t *ent, pmenuhnd_t *p);
+void      MapTrainer_ToggleBhopTrainer(edict_t *ent, pmenuhnd_t *p);
+void      MapTrainer_UpdateJumpTrainerSubmenu(edict_t *ent);
 
 //============================================================================
 
@@ -2967,6 +2971,14 @@ struct gclient_t
 	uint8_t                   num_damage_indicators;
 
 	float killer_yaw; // when dead, look at killer
+
+	// Bhop trainer tracking (per-client)
+	int32_t bhop_grounded_frames_since_landing;
+	bool    bhop_recently_landed;
+	bool    bhop_jump_held_on_landing;
+	uint8_t bhop_result_window_index;
+	uint8_t bhop_result_window_count;
+	bool    bhop_result_window[20];
 
 	weaponstate_t weaponstate;
 	struct {

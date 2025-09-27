@@ -3286,6 +3286,56 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 			}
 		}
 
+		// Bhop consistency detection (server-side only, optional)
+		if (level.map_trainer.bhop_enabled && ent->client)
+		{
+			// Detect landing transition this frame
+			bool was_airborne = !(ent->client->ps.pmove.pm_flags & PMF_ON_GROUND);
+			bool now_grounded = (pm.s.pm_flags & PMF_ON_GROUND) != 0;
+			if (was_airborne && now_grounded)
+			{
+				ent->client->bhop_recently_landed = true;
+				ent->client->bhop_grounded_frames_since_landing = 0;
+				ent->client->bhop_jump_held_on_landing = !!(pm.cmd.buttons & BUTTON_JUMP) || !!(ent->client->ps.pmove.pm_flags & PMF_JUMP_HELD);
+			}
+
+			// Count grounded frames after landing
+			if (ent->client->bhop_recently_landed && now_grounded)
+				ent->client->bhop_grounded_frames_since_landing++;
+
+			// Classify when a jump actually happens
+			if (pm.jump_sound && !(pm.s.pm_flags & PMF_ON_LADDER))
+			{
+				bool perfect = ent->client->bhop_recently_landed && ent->client->bhop_grounded_frames_since_landing <= 1;
+				bool late = ent->client->bhop_recently_landed && ent->client->bhop_grounded_frames_since_landing > 1;
+				bool early_or_held = ent->client->bhop_recently_landed && ent->client->bhop_jump_held_on_landing && ent->client->bhop_grounded_frames_since_landing <= 1;
+
+				// Update rolling window (20 recent jumps)
+				const uint8_t window_size = (uint8_t) q_countof(ent->client->bhop_result_window);
+				if (ent->client->bhop_result_window_count < window_size)
+					ent->client->bhop_result_window_count++;
+				ent->client->bhop_result_window[ent->client->bhop_result_window_index] = perfect;
+				ent->client->bhop_result_window_index = (ent->client->bhop_result_window_index + 1) % window_size;
+
+				// Simple feedback
+				if (perfect)
+				{
+					gi.LocClient_Print(ent, PRINT_HIGH, "Bhop: Perfect");
+					// Audible feedback for frame-perfect
+					gi.sound(ent, CHAN_AUTO, gi.soundindex("misc/menu3.wav"), 1.0f, ATTN_NONE, 0);
+				}
+				else if (early_or_held)
+					gi.LocClient_Print(ent, PRINT_HIGH, "Bhop: Early/Held");
+				else if (late)
+					gi.LocClient_Print(ent, PRINT_HIGH, "Bhop: Late ({}f)", ent->client->bhop_grounded_frames_since_landing);
+
+				// Reset landing state after jump
+				ent->client->bhop_recently_landed = false;
+				ent->client->bhop_grounded_frames_since_landing = 0;
+				ent->client->bhop_jump_held_on_landing = false;
+			}
+		}
+
 		P_FallingDamage(ent, pm);
 
 		if (ent->client->landmark_free_fall && pm.groundentity)
