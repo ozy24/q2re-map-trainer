@@ -4957,7 +4957,7 @@ pmenu_t maptrainer_menu[] = {
 	{ "Close Menu", PMENU_ALIGN_LEFT, MapTrainer_MenuClose },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
-	{ "v0.91 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
+	{ "v0.92 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
 	
 };
 
