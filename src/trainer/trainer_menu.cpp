@@ -4,6 +4,10 @@
 #include "../g_local.h"
 #include "trainer.h"
 
+// ==================== VERSION ====================
+
+#define TRAINER_VERSION "v0.93 beta by ozy"
+
 // ==================== MENU SYSTEM ====================
 
 void MapTrainer_MenuClose(edict_t *ent, pmenuhnd_t *p)
@@ -193,7 +197,7 @@ pmenu_t maptrainer_itempathing_submenu[] = {
 	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
-	{ "v0.87 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
+	{ TRAINER_VERSION, PMENU_ALIGN_CENTER, nullptr }
 };
 
 void MapTrainer_OpenItemPathingSubmenu(edict_t *ent, pmenuhnd_t *p)
@@ -297,7 +301,7 @@ pmenu_t maptrainer_itemtiming_submenu[] = {
 	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
-	{ "v0.87 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
+	{ TRAINER_VERSION, PMENU_ALIGN_CENTER, nullptr }
 };
 
 void MapTrainer_OpenItemTimingSubmenu(edict_t *ent, pmenuhnd_t *p)
@@ -348,7 +352,7 @@ pmenu_t maptrainer_jumptrainer_submenu[] = {
 	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
-	{ "v0.92 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
+	{ TRAINER_VERSION, PMENU_ALIGN_CENTER, nullptr }
 };
 
 void MapTrainer_OpenJumpTrainerSubmenu(edict_t *ent, pmenuhnd_t *p)
@@ -389,7 +393,7 @@ pmenu_t maptrainer_menu[] = {
 	{ "Close Menu", PMENU_ALIGN_LEFT, MapTrainer_MenuClose },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
-	{ "v0.92 beta by ozy", PMENU_ALIGN_CENTER, nullptr }
+	{ TRAINER_VERSION, PMENU_ALIGN_CENTER, nullptr }
 	
 };
 
