@@ -45,6 +45,8 @@ void MapTrainer_Init()
 	level.map_trainer.free_collect_enabled = true;
 	// Initialize debug prints as disabled by default
 	level.map_trainer.timing_debug_enabled = false;
+	// Initialize major items only as enabled by default (focus on duel-relevant items)
+	level.map_trainer.timing_major_items_only = true;
 	// Initialize timing entries array
 	level.map_trainer.timing_entry_count = 0;
 	for (int32_t i = 0; i < level.map_trainer.MAX_TIMING_ENTRIES; i++)

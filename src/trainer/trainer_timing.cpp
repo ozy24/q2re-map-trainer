@@ -8,10 +8,49 @@
 
 // Constants
 constexpr float ITEM_PICKUP_RADIUS = 64.0f; // Standard Quake 2 pickup radius
+constexpr float ITEM_POSITION_EPSILON = 16.0f; // Distance threshold for considering items at same position
 constexpr gtime_t MEGAHEALTH_INDEFINITE_GRACE = 999999_sec; // Grace period until decay finishes
+constexpr gtime_t MEGAHEALTH_PHASE2_GRACE = 3_sec; // Grace period after decay before timing checks
+constexpr gtime_t MEGAHEALTH_EXPIRE_TIMEOUT = 60_sec; // Auto-expire megahealth entry if player doesn't return
+
+// Helper function to check if item is "major" for duel practice
+// Major items: RL/RG/CG (trifecta) + All Armors + Megahealth + Quad
+bool MapTrainer_IsMajorItem(const char* classname)
+{
+	if (!classname)
+		return false;
+	
+	// All armors are major items in duels
+	if (Q_strcasecmp(classname, "item_armor_body") == 0)       // Red Armor
+		return true;
+	if (Q_strcasecmp(classname, "item_armor_combat") == 0)     // Yellow Armor
+		return true;
+	if (Q_strcasecmp(classname, "item_armor_jacket") == 0)     // Green Armor
+		return true;
+	
+	// Megahealth is critical
+	if (Q_strcasecmp(classname, "item_health_mega") == 0)
+		return true;
+	
+	// Quad is critical
+	if (Q_strcasecmp(classname, "item_quad") == 0)
+		return true;
+	
+	// Main weapons only (Trifecta)
+	if (Q_strcasecmp(classname, "weapon_railgun") == 0)
+		return true;
+	if (Q_strcasecmp(classname, "weapon_rocketlauncher") == 0)
+		return true;
+	if (Q_strcasecmp(classname, "weapon_chaingun") == 0)
+		return true;
+	
+	// Everything else is filtered out (shotgun, hyperblaster, BFG, etc.)
+	return false;
+}
 
 // Helper function to find existing timing entry for an item
-map_trainer_t::timing_entry_t* MapTrainer_FindTimingEntry(const char *classname)
+// Uses both classname AND position to differentiate multiple items of the same type
+map_trainer_t::timing_entry_t* MapTrainer_FindTimingEntry(const char *classname, const vec3_t &position)
 {
 	if (!classname)
 		return nullptr;
@@ -22,7 +61,13 @@ map_trainer_t::timing_entry_t* MapTrainer_FindTimingEntry(const char *classname)
 			level.map_trainer.timing_entries[i].item_classname &&
 			Q_strcasecmp(level.map_trainer.timing_entries[i].item_classname, classname) == 0)
 		{
-			return &level.map_trainer.timing_entries[i];
+			// Check if position matches (within epsilon tolerance)
+			vec3_t diff = position - level.map_trainer.timing_entries[i].position;
+			float distance = diff.length();
+			if (distance <= ITEM_POSITION_EPSILON)
+			{
+				return &level.map_trainer.timing_entries[i];
+			}
 		}
 	}
 	return nullptr;
@@ -35,8 +80,8 @@ map_trainer_t::timing_entry_t* MapTrainer_CreateOrUpdateTimingEntry(const char *
 	if (!classname || !item_name)
 		return nullptr;
 		
-	// First try to find existing entry
-	map_trainer_t::timing_entry_t* entry = MapTrainer_FindTimingEntry(classname);
+	// First try to find existing entry (by classname AND position)
+	map_trainer_t::timing_entry_t* entry = MapTrainer_FindTimingEntry(classname, position);
 	
 	// If not found, create new entry
 	if (!entry)
@@ -84,6 +129,10 @@ void MapTrainer_OnTimingItemPickup(edict_t *ent, edict_t *other)
 		return;
 
 	const char *classname = ent->item->classname;
+	
+	// Check major items filter
+	if (level.map_trainer.timing_major_items_only && !MapTrainer_IsMajorItem(classname))
+		return;  // Skip this item if filter is enabled and item is not major
 	const char *item_name = nullptr;
 	gtime_t respawn_time = 20_sec; // Default respawn time
 	
@@ -141,11 +190,11 @@ void MapTrainer_OnTimingItemPickup(edict_t *ent, edict_t *other)
 		item_name = "DualFire Damage";
 		respawn_time = 60_sec;
 	}
-	// Check for megahealth (special 25 second timing - 5 sec decay + 20 sec respawn)
+	// Check for megahealth (20 second respawn after decay)
 	else if (Q_strcasecmp(classname, "item_health_mega") == 0)
 	{
 		item_name = "Megahealth";
-		respawn_time = 25_sec; // Total time estimate (will be dynamic based on player health)
+		respawn_time = 20_sec; // Respawn time after health decay finishes (health <= 100)
 	}
 	// Check for weapon items (30 second respawn - typical weapon respawn time)
 	else if (ent->item->flags & IF_WEAPON)
@@ -277,7 +326,8 @@ void MapTrainer_CheckArmorTiming(edict_t *player)
 
 			// Reset this timing entry after showing result
 			entry->active = false;
-			level.map_trainer.timing_entry_count--;
+			if (level.map_trainer.timing_entry_count > 0)
+				level.map_trainer.timing_entry_count--;
 		}
 	}
 }
@@ -301,7 +351,8 @@ void MapTrainer_CheckMegahealthTiming(edict_t *player)
 		{
 			// Player disconnected - invalidate this entry
 			entry->active = false;
-			level.map_trainer.timing_entry_count--;
+			if (level.map_trainer.timing_entry_count > 0)
+				level.map_trainer.timing_entry_count--;
 			continue;
 		}
 		
@@ -311,18 +362,33 @@ void MapTrainer_CheckMegahealthTiming(edict_t *player)
 		// Phase 1: Check if health decay has finished
 		if (!entry->megahealth_decay_finished)
 		{
+			// If player is dead, invalidate this entry (death is not normal decay)
+			if (player->health <= 0 || player->deadflag)
+			{
+				entry->active = false;
+				if (level.map_trainer.timing_entry_count > 0)
+					level.map_trainer.timing_entry_count--;
+				
+				if (level.map_trainer.timing_debug_enabled)
+				{
+					gi.LocClient_Print(player, PRINT_HIGH, "[DEBUG] Megahealth timing cancelled (player died)");
+				}
+				continue;
+			}
+			
 			// Check if player's health has dropped to max_health or below
 			if (player->health <= player->max_health)
 			{
 				// Health decay finished, start the 20-second respawn timer
 				entry->megahealth_decay_finished = true;
 				entry->megahealth_respawn_start = level.time;
-				entry->grace_period_end = level.time; // End grace period now
+				// Add a small grace period to prevent immediate timing results if player is near spawn
+				entry->grace_period_end = level.time + MEGAHEALTH_PHASE2_GRACE;
 				
 				if (level.map_trainer.timing_debug_enabled)
 				{
-					gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("[DEBUG] Megahealth decay finished at {:.2f}, starting 20s respawn timer",
-						level.time.seconds()).data());
+					gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("[DEBUG] Megahealth decay finished at {:.2f}, starting 20s respawn timer (+{:.0f}s grace)",
+						level.time.seconds(), MEGAHEALTH_PHASE2_GRACE.seconds()).data());
 				}
 			}
 			// Still in decay phase, continue monitoring
@@ -330,13 +396,34 @@ void MapTrainer_CheckMegahealthTiming(edict_t *player)
 		}
 
 		// Phase 2: Check if player is near the megahealth spawn point for timing results
+		
+		// Check if still in grace period after decay
+		if (level.time < entry->grace_period_end)
+			continue;
+		
+		// Check for timeout - auto-expire if player hasn't returned within timeout period
+		gtime_t time_since_decay = level.time - entry->megahealth_respawn_start;
+		if (time_since_decay > MEGAHEALTH_EXPIRE_TIMEOUT)
+		{
+			entry->active = false;
+			if (level.map_trainer.timing_entry_count > 0)
+				level.map_trainer.timing_entry_count--;
+			
+			if (level.map_trainer.timing_debug_enabled)
+			{
+				gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("[DEBUG] Megahealth timing expired after {:.0f}s (no return to spawn)",
+					MEGAHEALTH_EXPIRE_TIMEOUT.seconds()).data());
+			}
+			continue;
+		}
+		
 		vec3_t diff = player->s.origin - entry->position;
 		float distance = diff.length();
 
 		if (distance <= ITEM_PICKUP_RADIUS) // Within pickup radius
 		{
 			gtime_t current_time = level.time;
-			gtime_t expected_respawn_time = entry->megahealth_respawn_start + 20_sec;
+			gtime_t expected_respawn_time = entry->megahealth_respawn_start + entry->respawn_time;
 			float time_diff = (current_time - expected_respawn_time).seconds();
 
 			if (level.map_trainer.timing_debug_enabled)
@@ -354,7 +441,8 @@ void MapTrainer_CheckMegahealthTiming(edict_t *player)
 
 			// Reset this timing entry after showing result
 			entry->active = false;
-			level.map_trainer.timing_entry_count--;
+			if (level.map_trainer.timing_entry_count > 0)
+				level.map_trainer.timing_entry_count--;
 		}
 	}
 }

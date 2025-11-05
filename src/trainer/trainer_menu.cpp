@@ -278,6 +278,22 @@ void MapTrainer_ToggleTimingDebug(edict_t *ent, pmenuhnd_t *p)
 	PMenu_Update(ent);
 }
 
+void MapTrainer_ToggleMajorItemsOnly(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.timing_major_items_only = !level.map_trainer.timing_major_items_only;
+	
+	if (level.map_trainer.timing_major_items_only)
+	{
+		gi.LocClient_Print(ent, PRINT_HIGH, "Tracking: Major items only (RL/RG/CG + Armors + MH + Quad)");
+	}
+	else
+	{
+		gi.LocClient_Print(ent, PRINT_HIGH, "Tracking: All items");
+	}
+	
+	PMenu_Update(ent);
+}
+
 void MapTrainer_UpdateItemTimingSubmenu(edict_t *ent)
 {
 	if (!ent->client->menu)
@@ -287,17 +303,18 @@ void MapTrainer_UpdateItemTimingSubmenu(edict_t *ent)
 	
 	// Update toggle display text
 	Q_strlcpy(entries[2].text, G_Fmt("Timing Trainer: {}", level.map_trainer.timing_enabled ? "Enabled" : "Disabled").data(), sizeof(entries[2].text));
-	Q_strlcpy(entries[3].text, G_Fmt("Free Collect: {}", level.map_trainer.free_collect_enabled ? "ON" : "OFF").data(), sizeof(entries[3].text));
-	Q_strlcpy(entries[4].text, G_Fmt("Debug Prints: {}", level.map_trainer.timing_debug_enabled ? "ON" : "OFF").data(), sizeof(entries[4].text));
+	Q_strlcpy(entries[3].text, G_Fmt("Track: {}", level.map_trainer.timing_major_items_only ? "Major Items" : "All Items").data(), sizeof(entries[3].text));
+	Q_strlcpy(entries[4].text, G_Fmt("Free Collect: {}", level.map_trainer.free_collect_enabled ? "ON" : "OFF").data(), sizeof(entries[4].text));
+	Q_strlcpy(entries[5].text, G_Fmt("Debug Prints: {}", level.map_trainer.timing_debug_enabled ? "ON" : "OFF").data(), sizeof(entries[5].text));
 }
 
 pmenu_t maptrainer_itemtiming_submenu[] = {
 	{ "Item Timing Trainer", PMENU_ALIGN_CENTER, nullptr },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Timing Trainer: Disabled", PMENU_ALIGN_LEFT, MapTrainer_ToggleTiming },
+	{ "Track: Major Items", PMENU_ALIGN_LEFT, MapTrainer_ToggleMajorItemsOnly },
 	{ "Free Collect: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleFreeCollect },
 	{ "Debug Prints: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleTimingDebug },
-	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "", PMENU_ALIGN_CENTER, nullptr },

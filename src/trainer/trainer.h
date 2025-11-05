@@ -62,6 +62,8 @@ struct map_trainer_t
 	bool free_collect_enabled;
 	// Debug prints toggle for timing trainer
 	bool timing_debug_enabled;
+	// Major items only - track only RL/RG/CG + Armors + MH + Quad (default: true for duel practice)
+	bool timing_major_items_only;
 	// Bhop trainer toggle
 	bool bhop_enabled;
 	// Timing trainer data - support for multiple concurrent timings
@@ -120,7 +122,7 @@ void MapTrainer_ShowWelcomeMessage(edict_t *player);
 // ==================== TIMING TRAINER API ====================
 
 // Timing entry management
-map_trainer_t::timing_entry_t* MapTrainer_FindTimingEntry(const char *classname);
+map_trainer_t::timing_entry_t* MapTrainer_FindTimingEntry(const char *classname, const vec3_t &position);
 map_trainer_t::timing_entry_t* MapTrainer_CreateOrUpdateTimingEntry(const char *classname, const char *item_name, 
 	const vec3_t &position, gtime_t pickup_time, gtime_t respawn_time);
 
@@ -168,6 +170,7 @@ void MapTrainer_ToggleCombineHealthPacks(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_OpenItemTimingSubmenu(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_UpdateItemTimingSubmenu(edict_t *ent);
 void MapTrainer_ToggleTiming(edict_t *ent, pmenuhnd_t *p);
+void MapTrainer_ToggleMajorItemsOnly(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_ToggleFreeCollect(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_ToggleTimingDebug(edict_t *ent, pmenuhnd_t *p);
 
