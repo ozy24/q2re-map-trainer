@@ -1,30 +1,323 @@
 # Quake 2 Rerelease Map Trainer
 
-A training mod for Quake 2 Rerelease that helps players learn new maps and practice jumps.
+A training mod for Quake 2 Rerelease that helps players learn maps, improve item timing, and practice movement mechanics.
 
-## What it does
+**Version**: v0.94 beta by ozy
 
-- **Item Training**: Highlights specific items on the map for you to collect in sequence
-- **Item Timing**: Starts a timer when picking up a weapon, armor or powerup and provides feedback to players on timing accuracy
-- **Spawn Management**: Save and warp to custom spawn points for jump practice
-- **Speed Tracking**: Optional speedometer to monitor your movement
+---
 
-For item training, item location data must be pulled from the map (.bsp) file and converted to .csv file using the bsp2csv tool.  There are a number of map .csv files ready to go, but in the event you need to learn a new map the conversion process is simple.
+## 🎯 Features
 
-## Installation
+### 📍 **Item Path Training**
+Guides you through items on the map in a randomized sequence. Perfect for learning optimal item routes and map layouts.
 
-1. **Download** the latest release zip file
-2. **Extract** the trainer folder into your Q2RE rerelease folder
-   for example:  "c:\Program Files (x86)\Steam\steamapps\common\Quake 2\rerelease\"
-3. **Launch** Quake 2 and type the command "game trainer" at the console. Now load a map to activate the mod.
+- Automatically detects all items from the map (no setup required!)
+- Shows you which item to collect next
+- Customizable: enable/disable weapons, ammo, health, armor, or powerups
+- Great for learning new maps quickly
 
-## Usage
+### ⏱️ **Item Timing Training**
+Provides precise feedback on your item respawn timing accuracy.
 
-- **Open trainer menu**: Press tab
-- **Set spawn point**: Type `savepos` to save your current position (recommended to bind to a key)
-- **Warp to spawn**: Type `loadpos` to return to your saved position (recommended to bind to a key)
-- **Configure categories**: Use the menu to enable/disable item types and speedometer for training
+- Tracks armor, weapons, powerups, and megahealth
+- Shows if you were early or late (in seconds/frames)
+- Special megahealth handling (accounts for decay time)
+- Perfect for competitive duel practice
 
-## Supported Maps
+### 🦘 **Jump Trainer**
+Practice movement mechanics and difficult jumps.
 
-The conversion tool should work with all maps but please let me know if one does not!
+- **Save/Load Position**: Save spawn points for jump practice
+- **Bhop Consistency**: Get real-time feedback on bunny hop timing
+- **Speedometer**: Track your movement speed
+
+---
+
+## 📸 Screenshots
+
+![Screenshot 1](../docs/img/1.png)
+
+![Screenshot 2](../docs/img/2.png)
+
+![Screenshot 3](../docs/img/3.png)
+
+---
+
+## 📥 Installation
+
+1. **Download** `game_x64.dll` from the latest release
+2. **Copy** it to your Quake 2 baseq2 folder:
+   ```
+   <Steam>\steamapps\common\Quake 2\rerelease\baseq2\
+   ```
+   Example:
+   ```
+   C:\Program Files (x86)\Steam\steamapps\common\Quake 2\rerelease\baseq2\game_x64.dll
+   ```
+3. **Launch** Quake 2 Rerelease
+
+**That's it!** The trainer is now active.
+
+---
+
+## 🎮 Quick Start
+
+### Opening the Menu
+Press **TAB** to open the trainer menu (or type `maptrainer` in console).
+
+### Recommended Key Bindings
+Open the console (~) and type:
+```
+bind F5 "savepos"
+bind F6 "loadpos"
+bind TAB "maptrainer"
+```
+
+Now you can:
+- **F5**: Save your current position
+- **F6**: Teleport back to saved position
+- **TAB**: Open the trainer menu
+
+---
+
+## 📖 Usage Guide
+
+### Item Path Training
+
+1. Open the menu (TAB)
+2. Select **"Item Path Trainer"**
+3. Enable **"Path Trainer: OFF"** (toggles to ON)
+4. Configure item categories (weapons, health, armor, etc.)
+5. Close menu and play
+6. Pick up the highlighted item, then go to the next one shown
+
+**Tips:**
+- Disable item types you don't care about (e.g., turn off ammo for faster routes)
+- Use "Combine Health Packs" to treat all health packs as one target
+- Great for learning optimal item collection routes
+
+### Item Timing Training
+
+1. Open the menu (TAB)
+2. Select **"Item Timing Trainer"**  
+3. Enable **"Timing Trainer: Disabled"** (toggles to Enabled)
+4. Close menu and play
+5. Pick up a major item (armor, weapon, powerup, megahealth)
+6. Return to that item's spawn point when you think it's about to respawn
+7. You'll see feedback: **"Red Armor: +0.25"** (you were 0.25 seconds late)
+
+**Tips:**
+- **Positive numbers** = late (item already spawned)
+- **Negative numbers** = early (item hasn't spawned yet)
+- Enable "Free Collect" to pick up armor even when at max (for easier practice)
+- Enable "Debug Prints" for detailed timing information
+
+**Megahealth timing**: The trainer automatically handles megahealth's special timing - it waits for your health to decay to 100, THEN starts the 20-second timer.
+
+### Jump Trainer / Bhop Practice
+
+1. Open the menu (TAB)
+2. Select **"Item Jump Trainer"**
+3. Enable features you want:
+   - **Save/Load Position**: Practice specific jumps repeatedly
+   - **Bhop Consistency**: Get feedback on your bunny hop timing
+
+**Bhop Feedback:**
+- **"Perfect"**: Frame-perfect jump (0-1 frames after landing)
+- **"Late (Nf)"**: You jumped N frames too late
+- **"Early/Held"**: You held jump too early
+
+**Tips:**
+- Use savepos/loadpos for practicing difficult jumps
+- Bhop trainer only gives feedback during active bhop chains (not your first jump)
+- Chain resets after standing still for ~1 second
+
+### Speedometer
+
+Enable from the main menu to see your horizontal movement speed in real-time. Great for optimizing strafe jumping and maintaining speed through turns.
+
+---
+
+## ⚙️ Console Commands
+
+| Command | Description |
+|---------|-------------|
+| `maptrainer` | Open the trainer menu |
+| `savepos` | Save your current position and view angle |
+| `loadpos` | Teleport to your saved position |
+| `trainer_debug 1` | Enable debug logging to `trainer.log` |
+| `trainer_debug 0` | Disable debug logging |
+
+---
+
+## 🎓 Training Tips
+
+### Learning a New Map
+1. Enable **Path Training** with all categories
+2. Run the route several times
+3. Note the item sequence - it's randomized but teaches you where everything is
+4. Disable categories to focus on specific item types (e.g., just armor + health)
+
+### Improving Item Timing for Duels
+1. Enable **Timing Training**
+2. Focus on major items first: Red Armor, Mega Health, Quad
+3. Goal: Get within ±0.5 seconds consistently
+4. Advanced: Try to be slightly early (-0.2s to 0s) to deny opponent
+
+### Practicing Difficult Jumps
+1. Enable **Jump Trainer**
+2. Navigate to the jump location
+3. Save position with `savepos` (F5)
+4. Attempt the jump
+5. Use `loadpos` (F6) to retry instantly
+6. Enable speedometer to optimize your speed
+
+### Bhop Consistency Practice
+1. Enable **Bhop Consistency** in Jump Trainer menu
+2. Find an open area
+3. Practice bunny hopping
+4. Aim for "Perfect" on every jump
+5. Watch out for "Late (Nf)" feedback to improve timing
+
+---
+
+## 🗺️ Supported Maps
+
+**All Quake 2 maps are supported!** The trainer automatically detects items from the map at runtime - no conversion or setup required.
+
+Works with:
+- Official Q2 maps (q2dm1-q2dm8, etc.)
+- Community maps
+- Custom maps
+- Mission pack maps
+
+---
+
+## 🐛 Troubleshooting
+
+### Menu won't open
+- Make sure you're in a multiplayer map (deathmatch mode)
+- Try typing `maptrainer` in the console instead of TAB
+
+### Path training shows "No items found"
+- Make sure you're on a deathmatch map (not single-player)
+- Check that at least one item category is enabled in the menu
+
+### Timing not working
+- Make sure **Timing Trainer** is enabled (check menu)
+- Path Training and Timing Training are mutually exclusive (enabling one disables the other)
+- You need to be within pickup radius (64 units) of the item spawn for feedback
+
+### Bhop trainer showing incorrect timing
+- Make sure you're doing continuous bhops (jumping immediately after landing)
+- The chain resets if you stand still for ~1 second
+- First jump of a new chain is silent (not counted)
+
+### Debug logging
+If you encounter issues, enable debug logging:
+```
+trainer_debug 1
+```
+This creates a `trainer.log` file in your Quake 2 directory with detailed information.
+
+---
+
+## 🎯 Recommended Workflow for Duel Practice
+
+1. **Learn the map** (Day 1-2):
+   - Use Path Training to learn item locations
+   - Run routes multiple times with different category settings
+
+2. **Build muscle memory** (Day 3-5):
+   - Use Jump Trainer to practice difficult jumps
+   - Save positions for tricky areas
+   - Enable speedometer to optimize movement
+
+3. **Master timing** (Day 6+):
+   - Switch to Timing Training
+   - Focus on Red Armor and Mega Health first
+   - Aim for ±0.5 seconds, then ±0.2 seconds
+   - Practice until timings are automatic
+
+4. **Polish movement** (Ongoing):
+   - Keep Bhop Consistency enabled during practice
+   - Aim for "Perfect" on every jump
+   - Use speedometer to maintain high speeds
+
+---
+
+## 🔧 Advanced Settings
+
+### Free Collect Mode
+Allows you to pick up armor even when at maximum capacity. Useful for timing practice without worrying about your current armor value.
+
+### Combine Health Packs
+Treats all health packs (small + medium) as a single target type. Useful for path training when you don't care about specific health pack sizes.
+
+### Debug Prints (Timing)
+Shows detailed debug information about timing calculations. Use this if you want to understand exactly how the timing trainer works.
+
+---
+
+## 📊 Technical Details
+
+- **Timing Grace Period**: 5 seconds after pickup (prevents immediate re-timing)
+- **Pickup Radius**: 64 units (standard Q2 pickup range)
+- **Bhop Chain Timeout**: 30 frames (~1 second)
+- **Position Match Tolerance**: 32 units (for item detection)
+- **Max Concurrent Timings**: 32 items
+
+---
+
+## 🙏 Credits
+
+**Created by**: ozy  
+**Version**: v0.94 beta  
+**Architecture**: "Thin vanilla" design - minimal changes to base game code  
+
+Built with the Quake 2 Rerelease SDK  
+Copyright (c) ZeniMax Media Inc.
+
+---
+
+## 📝 Changelog
+
+### v0.94 beta
+- Various bug and stability fixes
+
+### v0.93 (2025-11-01)
+- Refactored to "thin vanilla" architecture
+- Fixed bhop chain detection (first jump no longer counted)
+- Added centralized debug logging system (`trainer_debug` cvar)
+- Fixed item timing duplicate debug messages
+- Improved path training feedback
+- Tightened position matching tolerance (128→32 units)
+- Added version constant for easier updates
+- Build output now goes to `dist/` directory
+
+### v0.92
+- Added bhop consistency tracking
+- Improved megahealth timing logic
+- Various bug fixes
+
+### v0.87  
+- Initial release
+- Path training and timing features
+- Jump trainer basics
+
+---
+
+## 🆘 Support
+
+If you encounter bugs or have feature requests, please provide:
+1. Description of the issue
+2. Steps to reproduce
+3. Map name
+4. Contents of `trainer.log` (if `trainer_debug 1` was enabled)
+
+---
+
+**Good luck with your training! 🎯**
+
+
+
