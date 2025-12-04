@@ -2,7 +2,7 @@
 
 A training mod for Quake 2 Rerelease that helps players learn maps, improve item timing, and practice movement mechanics.
 
-**Version**: v0.93 beta by ozy
+**Version**: v0.94 beta by ozy
 
 ---
 
@@ -262,7 +262,7 @@ Shows detailed debug information about timing calculations. Use this if you want
 ## 🙏 Credits
 
 **Created by**: ozy  
-**Version**: v0.93 beta  
+**Version**: v0.94 beta  
 **Architecture**: "Thin vanilla" design - minimal changes to base game code  
 
 Built with the Quake 2 Rerelease SDK  
@@ -271,6 +271,9 @@ Copyright (c) ZeniMax Media Inc.
 ---
 
 ## 📝 Changelog
+
+### v0.94 beta
+- Various bug and stability fixes
 
 ### v0.93 (2025-11-01)
 - Refactored to "thin vanilla" architecture
