@@ -294,6 +294,36 @@ void MapTrainer_ToggleMajorItemsOnly(edict_t *ent, pmenuhnd_t *p)
 	PMenu_Update(ent);
 }
 
+void MapTrainer_ToggleTimingChallenge(edict_t *ent, pmenuhnd_t *p)
+{
+	// Cycle through modes: OFF -> EASY -> MEDIUM -> HARD -> PRO -> OFF
+	int current_mode = static_cast<int>(level.map_trainer.timing_challenge_mode);
+	current_mode = (current_mode + 1) % 5; // 5 modes total (0-4)
+	level.map_trainer.timing_challenge_mode = static_cast<timing_challenge_mode_t>(current_mode);
+	
+	// Show feedback based on new mode
+	switch (level.map_trainer.timing_challenge_mode)
+	{
+		case timing_challenge_mode_t::OFF:
+			gi.LocClient_Print(ent, PRINT_HIGH, "Timing Challenge: OFF");
+			break;
+		case timing_challenge_mode_t::EASY:
+			gi.LocClient_Print(ent, PRINT_HIGH, "Timing Challenge: EASY (±8 seconds)");
+			break;
+		case timing_challenge_mode_t::MEDIUM:
+			gi.LocClient_Print(ent, PRINT_HIGH, "Timing Challenge: MEDIUM (±5 seconds)");
+			break;
+		case timing_challenge_mode_t::HARD:
+			gi.LocClient_Print(ent, PRINT_HIGH, "Timing Challenge: HARD (±3 seconds)");
+			break;
+		case timing_challenge_mode_t::PRO:
+			gi.LocClient_Print(ent, PRINT_HIGH, "Timing Challenge: PRO (±1 second)");
+			break;
+	}
+	
+	PMenu_Update(ent);
+}
+
 void MapTrainer_UpdateItemTimingSubmenu(edict_t *ent)
 {
 	if (!ent->client->menu)
@@ -305,7 +335,21 @@ void MapTrainer_UpdateItemTimingSubmenu(edict_t *ent)
 	Q_strlcpy(entries[2].text, G_Fmt("Timing Trainer: {}", level.map_trainer.timing_enabled ? "Enabled" : "Disabled").data(), sizeof(entries[2].text));
 	Q_strlcpy(entries[3].text, G_Fmt("Track: {}", level.map_trainer.timing_major_items_only ? "Major Items" : "All Items").data(), sizeof(entries[3].text));
 	Q_strlcpy(entries[4].text, G_Fmt("Free Collect: {}", level.map_trainer.free_collect_enabled ? "ON" : "OFF").data(), sizeof(entries[4].text));
-	Q_strlcpy(entries[5].text, G_Fmt("Debug Prints: {}", level.map_trainer.timing_debug_enabled ? "ON" : "OFF").data(), sizeof(entries[5].text));
+	
+	// Update Timing Challenge display
+	const char* challenge_text = "OFF";
+	switch (level.map_trainer.timing_challenge_mode)
+	{
+		case timing_challenge_mode_t::EASY:   challenge_text = "Easy (±8s)"; break;
+		case timing_challenge_mode_t::MEDIUM: challenge_text = "Medium (±5s)"; break;
+		case timing_challenge_mode_t::HARD:   challenge_text = "Hard (±3s)"; break;
+		case timing_challenge_mode_t::PRO:    challenge_text = "Pro (±1s)"; break;
+		case timing_challenge_mode_t::OFF:
+		default:                               challenge_text = "OFF"; break;
+	}
+	Q_strlcpy(entries[5].text, G_Fmt("Challenge: {}", challenge_text).data(), sizeof(entries[5].text));
+	
+	Q_strlcpy(entries[6].text, G_Fmt("Debug Prints: {}", level.map_trainer.timing_debug_enabled ? "ON" : "OFF").data(), sizeof(entries[6].text));
 }
 
 pmenu_t maptrainer_itemtiming_submenu[] = {
@@ -314,8 +358,8 @@ pmenu_t maptrainer_itemtiming_submenu[] = {
 	{ "Timing Trainer: Disabled", PMENU_ALIGN_LEFT, MapTrainer_ToggleTiming },
 	{ "Track: Major Items", PMENU_ALIGN_LEFT, MapTrainer_ToggleMajorItemsOnly },
 	{ "Free Collect: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleFreeCollect },
+	{ "Challenge: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleTimingChallenge },
 	{ "Debug Prints: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleTimingDebug },
-	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
@@ -385,6 +429,78 @@ void MapTrainer_OpenJumpTrainerSubmenu(edict_t *ent, pmenuhnd_t *p)
     PMenu_Open(ent, maptrainer_jumptrainer_submenu, -1, sizeof(maptrainer_jumptrainer_submenu) / sizeof(pmenu_t), nullptr, MapTrainer_UpdateJumpTrainerSubmenu);
 }
 
+// ==================== SPAWN TRAINER MENU ====================
+
+void MapTrainer_ToggleSpawnTrainer(edict_t *ent, pmenuhnd_t *p)
+{
+	if (level.map_trainer.spawn_trainer_enabled)
+	{
+		MapTrainer_DisableSpawnTrainer();
+		gi.LocClient_Print(ent, PRINT_HIGH, "Spawn Trainer disabled.");
+	}
+	else
+	{
+		if (MapTrainer_EnableSpawnTrainer(ent))
+			gi.LocClient_Print(ent, PRINT_HIGH, "Spawn Trainer enabled.");
+		else
+			gi.LocClient_Print(ent, PRINT_HIGH, "Spawn Trainer could not be enabled.");
+	}
+
+	PMenu_Update(ent);
+}
+
+void MapTrainer_ToggleSpawnTrainerOrder(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.spawn_trainer_true_random = !level.map_trainer.spawn_trainer_true_random;
+	const char *mode = level.map_trainer.spawn_trainer_true_random ? "Random (No Repeat)" : "Vanilla";
+	gi.LocClient_Print(ent, PRINT_HIGH, G_Fmt("Spawn order: {}", mode).data());
+	PMenu_Update(ent);
+}
+
+void MapTrainer_ToggleSpawnTrainerBeacon(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.spawn_trainer_beacon_enabled = !level.map_trainer.spawn_trainer_beacon_enabled;
+
+	if (level.map_trainer.spawn_trainer_beacon_enabled)
+		level.map_trainer.spawn_trainer_next_beep_time = level.time + gtime_t::from_sec(0.1f);
+	else
+		level.map_trainer.spawn_trainer_next_beep_time = gtime_t();
+
+	const char *mode = level.map_trainer.spawn_trainer_beacon_enabled ? "ON" : "OFF";
+	gi.LocClient_Print(ent, PRINT_HIGH, G_Fmt("Spawn Trainer beacon: {}", mode).data());
+	PMenu_Update(ent);
+}
+
+void MapTrainer_UpdateSpawnTrainerSubmenu(edict_t *ent)
+{
+	if (!ent->client || !ent->client->menu)
+		return;
+
+	pmenu_t *entries = ent->client->menu->entries;
+	Q_strlcpy(entries[2].text, G_Fmt("Spawn Trainer: {}", level.map_trainer.spawn_trainer_enabled ? "Enabled" : "Disabled").data(), sizeof(entries[2].text));
+	Q_strlcpy(entries[3].text, G_Fmt("Spawn Order: {}", level.map_trainer.spawn_trainer_true_random ? "Random (No Repeat)" : "Vanilla").data(), sizeof(entries[3].text));
+	Q_strlcpy(entries[4].text, G_Fmt("Beacon Beep: {}", level.map_trainer.spawn_trainer_beacon_enabled ? "ON" : "OFF").data(), sizeof(entries[4].text));
+}
+
+pmenu_t maptrainer_spawntrainer_submenu[] = {
+	{ "Spawn Trainer", PMENU_ALIGN_CENTER, nullptr },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Spawn Trainer: Disabled", PMENU_ALIGN_LEFT, MapTrainer_ToggleSpawnTrainer },
+	{ "Spawn Order: Vanilla", PMENU_ALIGN_LEFT, MapTrainer_ToggleSpawnTrainerOrder },
+	{ "Beacon Beep: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleSpawnTrainerBeacon },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
+	{ TRAINER_VERSION, PMENU_ALIGN_CENTER, nullptr }
+};
+
+void MapTrainer_OpenSpawnTrainerSubmenu(edict_t *ent, pmenuhnd_t *p)
+{
+	PMenu_Open(ent, maptrainer_spawntrainer_submenu, -1, sizeof(maptrainer_spawntrainer_submenu) / sizeof(pmenu_t), nullptr, MapTrainer_UpdateSpawnTrainerSubmenu);
+}
+
 // ==================== MAIN MENU ====================
 
 // Forward declaration
@@ -401,9 +517,9 @@ void MapTrainer_UpdateMenu(edict_t *ent)
 		return;
 		
 	pmenu_t *entries = ent->client->menu->entries;
-	
-	// Update speedometer display text (index 6 in the main menu - after adding Item Jump Trainer)
-	Q_strlcpy(entries[6].text, G_Fmt("Speedometer: {}", level.map_trainer.speedometer_enabled ? "ON" : "OFF").data(), sizeof(entries[6].text));
+
+	// Update speedometer display text (index 7 in the main menu - after adding Spawn Trainer)
+	Q_strlcpy(entries[7].text, G_Fmt("Speedometer: {}", level.map_trainer.speedometer_enabled ? "ON" : "OFF").data(), sizeof(entries[7].text));
 }
 
 pmenu_t maptrainer_menu[] = {
@@ -411,7 +527,8 @@ pmenu_t maptrainer_menu[] = {
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Item Path Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenItemPathingSubmenu },
 	{ "Item Timing Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenItemTimingSubmenu },
-	{ "Item Jump Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenJumpTrainerSubmenu },
+	{ "Jump Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenJumpTrainerSubmenu },
+	{ "Spawn Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenSpawnTrainerSubmenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Speedometer: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleSpeedometer },
 	{ "", PMENU_ALIGN_CENTER, nullptr },

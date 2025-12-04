@@ -1018,16 +1018,29 @@ select_spawn_result_t SelectDeathmatchSpawnPoint(bool farthest, bool force_spawn
 	{
 		edict_t *point;
 		float dist;
+		int32_t order;
 	};
 
 	static std::vector<spawn_point_t> spawn_points;
 
 	spawn_points.clear();
 
+	auto make_result = [&](const spawn_point_t *choice, bool any_valid)
+	{
+		select_spawn_result_t result;
+		result.spot = choice ? choice->point : nullptr;
+		result.any_valid = any_valid;
+		result.total_spawn_points = static_cast<int32_t>(spawn_points.size());
+		result.selected_spawn_index = choice ? choice->order : -1;
+		return result;
+	};
+
+	int32_t order_counter = 0;
+
 	// gather all spawn points 
 	edict_t *spot = nullptr;
 	while ((spot = G_FindByString<&edict_t::classname>(spot, "info_player_deathmatch")) != nullptr)
-		spawn_points.push_back({ spot, PlayersRangeFromSpot(spot) });
+		spawn_points.push_back({ spot, PlayersRangeFromSpot(spot), order_counter++ });
 
 	// no points
 	if (spawn_points.size() == 0)
@@ -1037,10 +1050,10 @@ select_spawn_result_t SelectDeathmatchSpawnPoint(bool farthest, bool force_spawn
 		{
 			spot = nullptr;
 			while ((spot = G_FindByString<&edict_t::classname>(spot, "info_player_team1")) != nullptr)
-				spawn_points.push_back({ spot, PlayersRangeFromSpot(spot) });
+				spawn_points.push_back({ spot, PlayersRangeFromSpot(spot), order_counter++ });
 			spot = nullptr;
 			while ((spot = G_FindByString<&edict_t::classname>(spot, "info_player_team2")) != nullptr)
-				spawn_points.push_back({ spot, PlayersRangeFromSpot(spot) });
+				spawn_points.push_back({ spot, PlayersRangeFromSpot(spot), order_counter++ });
 
 			// we only have an info_player_start then
 			if (spawn_points.size() == 0)
@@ -1048,24 +1061,57 @@ select_spawn_result_t SelectDeathmatchSpawnPoint(bool farthest, bool force_spawn
 				spot = G_FindByString<&edict_t::classname>(nullptr, "info_player_start");
 
 				if (spot)
-					spawn_points.push_back({ spot, PlayersRangeFromSpot(spot) });
+					spawn_points.push_back({ spot, PlayersRangeFromSpot(spot), order_counter++ });
 
 				// map is malformed
 				if (spawn_points.size() == 0)
-					return { nullptr, false };
+					return make_result(nullptr, false);
 			}
 		}
 		else
-			return { nullptr, false };
+			return make_result(nullptr, false);
+	}
+
+	if (level.map_trainer.spawn_trainer_force_random_pick && !spawn_points.empty())
+	{
+		level.map_trainer.spawn_trainer_force_random_pick = false;
+
+		const spawn_point_t *choice = nullptr;
+		if (spawn_points.size() == 1)
+		{
+			choice = &spawn_points[0];
+		}
+		else
+		{
+			std::vector<int32_t> candidates;
+			int32_t last_order = level.map_trainer.spawn_trainer_last_spawn_index;
+			for (size_t i = 0; i < spawn_points.size(); ++i)
+			{
+				if (spawn_points[i].order != last_order)
+					candidates.push_back(static_cast<int32_t>(i));
+			}
+
+			if (candidates.empty())
+			{
+				candidates.reserve(spawn_points.size());
+				for (size_t i = 0; i < spawn_points.size(); ++i)
+					candidates.push_back(static_cast<int32_t>(i));
+			}
+
+			int32_t idx = candidates[irandom(static_cast<int32_t>(candidates.size()))];
+			choice = &spawn_points[idx];
+		}
+
+		return make_result(choice, true);
 	}
 
 	// if there's only one spawn point, that's the one.
 	if (spawn_points.size() == 1)
 	{
 		if (force_spawn || SpawnPointClear(spawn_points[0].point))
-			return { spawn_points[0].point, true };
+			return make_result(&spawn_points[0], true);
 
-		return { nullptr, true };
+		return make_result(nullptr, true);
 	}
 
 	// order by distances ascending (top of list has closest players to point)
@@ -1077,7 +1123,7 @@ select_spawn_result_t SelectDeathmatchSpawnPoint(bool farthest, bool force_spawn
 		for (int32_t i = spawn_points.size() - 1; i >= 0; --i)
 		{
 			if (SpawnPointClear(spawn_points[i].point))
-				return { spawn_points[i].point, true };
+				return make_result(&spawn_points[i], true);
 		}
 
 		// none clear
@@ -1092,23 +1138,24 @@ select_spawn_result_t SelectDeathmatchSpawnPoint(bool farthest, bool force_spawn
 		// run down the list and pick the first one that we can use
 		for (auto it = spawn_points.begin() + 2; it != spawn_points.end(); ++it)
 		{
-			auto spot = it->point;
-
-			if (SpawnPointClear(spot))
-				return { spot, true };
+			if (SpawnPointClear(it->point))
+				return make_result(&*it, true);
 		}
 
 		// none clear, so we have to pick one of the other two
 		if (SpawnPointClear(spawn_points[1].point))
-			return { spawn_points[1].point, true };
+			return make_result(&spawn_points[1], true);
 		else if (SpawnPointClear(spawn_points[0].point))
-			return { spawn_points[0].point, true };
+			return make_result(&spawn_points[0], true);
 	}
 		
 	if (force_spawn)
-		return { random_element(spawn_points).point, true };
+	{
+		auto &choice = random_element(spawn_points);
+		return make_result(&choice, true);
+	}
 
-	return { nullptr, true };
+	return make_result(nullptr, true);
 }
 
 //===============
@@ -1443,12 +1490,22 @@ bool SelectSpawnPoint(edict_t *ent, vec3_t &origin, vec3_t &angles, bool force_s
 			spot = SelectCTFSpawnPoint(ent, force_spawn);
 		else
 		{
+			bool spawn_trainer_random = MapTrainer_IsSpawnTrainerBot(ent) && level.map_trainer.spawn_trainer_true_random;
+			if (spawn_trainer_random)
+				level.map_trainer.spawn_trainer_force_random_pick = true;
+
 			select_spawn_result_t result = SelectDeathmatchSpawnPoint(g_dm_spawn_farthest->integer, force_spawn, true);
+
+			if (spawn_trainer_random)
+				level.map_trainer.spawn_trainer_force_random_pick = false;
 
 			if (!result.any_valid)
 				gi.Com_Error("no valid spawn points found");
 
 			spot = result.spot;
+
+			if (spot && MapTrainer_IsSpawnTrainerBot(ent))
+				MapTrainer_OnSpawnTrainerRespawn(result.total_spawn_points, result.selected_spawn_index);
 		}
 
 		if (spot)
@@ -2360,6 +2417,9 @@ void ClientBeginDeathmatch(edict_t *ent)
 
 	// make sure all view stuff is valid
 	ClientEndServerFrame(ent);
+
+	// Map Trainer: track spawn trainer bot connections
+	MapTrainer_OnSpawnTrainerClientBegin(ent);
 }
 
 static void G_SetLevelEntry()
@@ -2549,6 +2609,9 @@ void ClientBegin(edict_t *ent)
 		level.map_trainer.welcome_message_time = level.time + 500_ms;
 	
 	}
+
+	// Map Trainer: track spawn trainer bot connections (non-DM path)
+	MapTrainer_OnSpawnTrainerClientBegin(ent);
 }
 
 /*
@@ -2945,6 +3008,8 @@ void ClientDisconnect(edict_t *ent)
 {
 	if (!ent->client)
 		return;
+
+	MapTrainer_OnSpawnTrainerClientDisconnect(ent);
 
 	// ZOID
 	CTFDeadDropFlag(ent);
@@ -3789,6 +3854,8 @@ void ClientBeginServerFrame(edict_t *ent)
 
 	client = ent->client;
 
+	bool handled_spawn_trainer = MapTrainer_HandleSpawnTrainerBot(ent);
+
 	if (client->awaiting_respawn)
 	{
 		if ((level.time.milliseconds() % 500) == 0)
@@ -3796,8 +3863,10 @@ void ClientBeginServerFrame(edict_t *ent)
 		return;
 	}
 
-	if ( ( ent->svflags & SVF_BOT ) != 0 ) {
-		Bot_BeginFrame( ent );
+	if ((ent->svflags & SVF_BOT) != 0)
+	{
+		if (!handled_spawn_trainer)
+			Bot_BeginFrame(ent);
 	}
 
 	if (deathmatch->integer && !G_TeamplayEnabled() &&

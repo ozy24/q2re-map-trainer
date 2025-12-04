@@ -247,6 +247,7 @@
     <ClCompile Include="trainer\trainer_path.cpp" />
     <ClCompile Include="trainer\trainer_timing.cpp" />
     <ClCompile Include="trainer\trainer_jump.cpp" />
+    <ClCompile Include="trainer\trainer_spawn.cpp" />
     <ClCompile Include="trainer\trainer_menu.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

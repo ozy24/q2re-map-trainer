@@ -13,6 +13,16 @@ struct pmove_t;
 
 // ==================== DATA STRUCTURES ====================
 
+// Timing Challenge difficulty levels
+enum class timing_challenge_mode_t : int32_t
+{
+	OFF = 0,
+	EASY = 1,    // ±8 seconds
+	MEDIUM = 2,  // ±5 seconds
+	HARD = 3,    // ±3 seconds
+	PRO = 4      // ±1 second
+};
+
 struct map_trainer_item_t
 {
 	char friendly_name[64];
@@ -64,8 +74,20 @@ struct map_trainer_t
 	bool timing_debug_enabled;
 	// Major items only - track only RL/RG/CG + Armors + MH + Quad (default: true for duel practice)
 	bool timing_major_items_only;
+	// Timing Challenge mode - practice timing items within a difficulty window
+	timing_challenge_mode_t timing_challenge_mode;
 	// Bhop trainer toggle
 	bool bhop_enabled;
+	// Spawn trainer
+	bool spawn_trainer_enabled;
+	edict_t *spawn_trainer_bot;
+	edict_t *spawn_trainer_owner;
+	bool spawn_trainer_true_random;
+	bool spawn_trainer_beacon_enabled;
+	gtime_t spawn_trainer_next_beep_time;
+	bool spawn_trainer_force_random_pick;
+	int32_t spawn_trainer_total_spawns;
+	int32_t spawn_trainer_last_spawn_index;
 	// Timing trainer data - support for multiple concurrent timings
 	struct timing_entry_t {
 		bool active;
@@ -173,6 +195,7 @@ void MapTrainer_ToggleTiming(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_ToggleMajorItemsOnly(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_ToggleFreeCollect(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_ToggleTimingDebug(edict_t *ent, pmenuhnd_t *p);
+void MapTrainer_ToggleTimingChallenge(edict_t *ent, pmenuhnd_t *p);
 
 // Jump trainer submenu
 void MapTrainer_OpenJumpTrainerSubmenu(edict_t *ent, pmenuhnd_t *p);
@@ -181,6 +204,21 @@ void MapTrainer_ToggleBhopTrainer(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_SavePosition(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_LoadPosition(edict_t *ent, pmenuhnd_t *p);
 
+// Spawn trainer submenu
+void MapTrainer_OpenSpawnTrainerSubmenu(edict_t *ent, pmenuhnd_t *p);
+void MapTrainer_UpdateSpawnTrainerSubmenu(edict_t *ent);
+void MapTrainer_ToggleSpawnTrainer(edict_t *ent, pmenuhnd_t *p);
+
 // Other settings
 void MapTrainer_ToggleSpeedometer(edict_t *ent, pmenuhnd_t *p);
+
+// Spawn trainer lifecycle
+void MapTrainer_InitSpawnTrainerState();
+bool MapTrainer_EnableSpawnTrainer(edict_t *requester);
+void MapTrainer_DisableSpawnTrainer();
+bool MapTrainer_HandleSpawnTrainerBot(edict_t *bot);
+void MapTrainer_OnSpawnTrainerClientBegin(edict_t *ent);
+void MapTrainer_OnSpawnTrainerClientDisconnect(edict_t *ent);
+bool MapTrainer_IsSpawnTrainerBot(const edict_t *ent);
+void MapTrainer_OnSpawnTrainerRespawn(int32_t total_spawns, int32_t spawn_index);
 

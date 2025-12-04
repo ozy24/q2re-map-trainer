@@ -955,7 +955,8 @@ TOUCH(Touch_Item) (edict_t *ent, edict_t *other, const trace_t &tr, bool other_t
 				// ZOID
 
 	// Map Trainer: Only allow pickup of target items (or any item if first pickup)
-	if (level.map_trainer.initialized && level.map_trainer.training_enabled)
+	// Bots are excluded from this restriction so they can pick up items normally
+	if (level.map_trainer.initialized && level.map_trainer.training_enabled && !(other->svflags & SVF_BOT))
 	{
 		if (!level.map_trainer.first_pickup && !MapTrainer_IsTargetItem(ent))
 		{

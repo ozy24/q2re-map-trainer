@@ -13,6 +13,20 @@ constexpr gtime_t MEGAHEALTH_INDEFINITE_GRACE = 999999_sec; // Grace period unti
 constexpr gtime_t MEGAHEALTH_PHASE2_GRACE = 3_sec; // Grace period after decay before timing checks
 constexpr gtime_t MEGAHEALTH_EXPIRE_TIMEOUT = 60_sec; // Auto-expire megahealth entry if player doesn't return
 
+// Helper function to get timing window based on challenge difficulty
+static float MapTrainer_GetTimingWindow(timing_challenge_mode_t mode)
+{
+	switch (mode)
+	{
+		case timing_challenge_mode_t::EASY:   return 8.0f;
+		case timing_challenge_mode_t::MEDIUM: return 5.0f;
+		case timing_challenge_mode_t::HARD:   return 3.0f;
+		case timing_challenge_mode_t::PRO:    return 1.0f;
+		case timing_challenge_mode_t::OFF:
+		default:                               return 0.0f; // Not used when OFF
+	}
+}
+
 // Helper function to check if item is "major" for duel practice
 // Major items: RL/RG/CG (trifecta) + All Armors + Megahealth + Quad
 bool MapTrainer_IsMajorItem(const char* classname)
@@ -133,6 +147,48 @@ void MapTrainer_OnTimingItemPickup(edict_t *ent, edict_t *other)
 	// Check major items filter
 	if (level.map_trainer.timing_major_items_only && !MapTrainer_IsMajorItem(classname))
 		return;  // Skip this item if filter is enabled and item is not major
+	
+	// Check if a bot picked up an item that's being timed - bot denied the item
+	if (other->svflags & SVF_BOT)
+	{
+		// Try to find existing timing entry for this item
+		map_trainer_t::timing_entry_t* entry = MapTrainer_FindTimingEntry(classname, ent->s.origin);
+		
+		if (entry)
+		{
+			// Item was being timed - bot denied it
+			if (entry->is_megahealth && entry->megahealth_player && 
+			    entry->megahealth_player->inuse && entry->megahealth_player->client)
+			{
+				// Notify the specific player who picked up the megahealth
+				gi.LocClient_Print(entry->megahealth_player, PRINT_CENTER, 
+					"Megahealth DENIED by bot");
+			}
+			else
+			{
+				// Notify all human players for regular items
+				for (int32_t i = 0; i < static_cast<int32_t>(game.maxclients); i++)
+				{
+					edict_t *player = &g_edicts[1 + i];
+					if (player->inuse && player->client && !(player->svflags & SVF_BOT))
+					{
+						gi.LocClient_Print(player, PRINT_CENTER, 
+							G_Fmt("{} DENIED by bot", entry->item_name ? entry->item_name : "Item").data());
+					}
+				}
+			}
+			
+			// Clear the timing entry
+			entry->active = false;
+			if (level.map_trainer.timing_entry_count > 0)
+				level.map_trainer.timing_entry_count--;
+			
+			return; // Don't create new timing entry for bot pickup
+		}
+		
+		// No existing timing entry - bot picked up item but it wasn't being timed, ignore it
+		return;
+	}
 	const char *item_name = nullptr;
 	gtime_t respawn_time = 20_sec; // Default respawn time
 	
@@ -311,18 +367,47 @@ void MapTrainer_CheckArmorTiming(edict_t *player)
 			gtime_t expected_respawn_time = entry->pickup_time + entry->respawn_time;
 			float time_diff = (current_time - expected_respawn_time).seconds();
 
-		if (level.map_trainer.timing_debug_enabled)
-		{
-			// Print concise debug info when in radius and timing check is triggered
-			gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("[DEBUG] {}: player({:.1f},{:.1f},{:.1f}) item({:.1f},{:.1f},{:.1f}) diff {:+.2f}",
-				entry->item_name ? entry->item_name : "?",
-				player->s.origin[0], player->s.origin[1], player->s.origin[2],
-				entry->position[0], entry->position[1], entry->position[2],
-				time_diff
-			).data());
-		}
+			if (level.map_trainer.timing_debug_enabled)
+			{
+				// Print concise debug info when in radius and timing check is triggered
+				gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("[DEBUG] {}: player({:.1f},{:.1f},{:.1f}) item({:.1f},{:.1f},{:.1f}) diff {:+.2f}",
+					entry->item_name ? entry->item_name : "?",
+					player->s.origin[0], player->s.origin[1], player->s.origin[2],
+					entry->position[0], entry->position[1], entry->position[2],
+					time_diff
+				).data());
+			}
 
-			gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("{}: {:+.2f}", entry->item_name ? entry->item_name : "?", time_diff).data());
+			// Check if Timing Challenge mode is enabled
+			if (level.map_trainer.timing_challenge_mode != timing_challenge_mode_t::OFF)
+			{
+				float window = MapTrainer_GetTimingWindow(level.map_trainer.timing_challenge_mode);
+				float abs_time_diff = fabsf(time_diff);
+				
+				if (abs_time_diff <= window)
+				{
+					// SUCCESS - within timing window
+					const char* quality = (abs_time_diff <= 0.5f) ? "Perfect timing!" : "Good timing!";
+					gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("{}: SUCCESS {:+.2f}s", 
+						entry->item_name ? entry->item_name : "?", time_diff).data());
+					gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("{} - {} ({:+.2f}s)", 
+						entry->item_name ? entry->item_name : "?", quality, time_diff).data());
+				}
+				else
+				{
+					// FAILURE - outside timing window
+					gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("{}: FAILED {:+.2f}s", 
+						entry->item_name ? entry->item_name : "?", time_diff).data());
+					gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("{} - Timing off by {:+.2f}s (±{:.0f}s window)", 
+						entry->item_name ? entry->item_name : "?", time_diff, window).data());
+				}
+			}
+			else
+			{
+				// Regular timing display (not challenge mode)
+				gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("{}: {:+.2f}", 
+					entry->item_name ? entry->item_name : "?", time_diff).data());
+			}
 
 			// Reset this timing entry after showing result
 			entry->active = false;
@@ -437,7 +522,31 @@ void MapTrainer_CheckMegahealthTiming(edict_t *player)
 				).data());
 			}
 
-			gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Megahealth: {:+.2f}", time_diff).data());
+			// Check if Timing Challenge mode is enabled
+			if (level.map_trainer.timing_challenge_mode != timing_challenge_mode_t::OFF)
+			{
+				float window = MapTrainer_GetTimingWindow(level.map_trainer.timing_challenge_mode);
+				float abs_time_diff = fabsf(time_diff);
+				
+				if (abs_time_diff <= window)
+				{
+					// SUCCESS - within timing window
+					const char* quality = (abs_time_diff <= 0.5f) ? "Perfect timing!" : "Good timing!";
+					gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Megahealth: SUCCESS {:+.2f}s", time_diff).data());
+					gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("Megahealth - {} ({:+.2f}s)", quality, time_diff).data());
+				}
+				else
+				{
+					// FAILURE - outside timing window
+					gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Megahealth: FAILED {:+.2f}s", time_diff).data());
+					gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("Megahealth - Timing off by {:+.2f}s (±{:.0f}s window)", time_diff, window).data());
+				}
+			}
+			else
+			{
+				// Regular timing display (not challenge mode)
+				gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Megahealth: {:+.2f}", time_diff).data());
+			}
 
 			// Reset this timing entry after showing result
 			entry->active = false;

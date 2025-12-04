@@ -40,6 +40,13 @@ void MapTrainer_Init()
 	level.map_trainer.timing_enabled = false;
 	// Initialize bhop trainer as disabled by default
 	level.map_trainer.bhop_enabled = false;
+	level.map_trainer.spawn_trainer_true_random = false;
+	level.map_trainer.spawn_trainer_force_random_pick = false;
+	level.map_trainer.spawn_trainer_owner = nullptr;
+	level.map_trainer.spawn_trainer_total_spawns = 0;
+	level.map_trainer.spawn_trainer_last_spawn_index = -1;
+	// Initialize spawn trainer state
+	MapTrainer_InitSpawnTrainerState();
 	
 	// Initialize free collect as enabled by default
 	level.map_trainer.free_collect_enabled = true;
@@ -47,6 +54,8 @@ void MapTrainer_Init()
 	level.map_trainer.timing_debug_enabled = false;
 	// Initialize major items only as enabled by default (focus on duel-relevant items)
 	level.map_trainer.timing_major_items_only = true;
+	// Initialize timing challenge as off by default
+	level.map_trainer.timing_challenge_mode = timing_challenge_mode_t::OFF;
 	// Initialize timing entries array
 	level.map_trainer.timing_entry_count = 0;
 	for (int32_t i = 0; i < level.map_trainer.MAX_TIMING_ENTRIES; i++)

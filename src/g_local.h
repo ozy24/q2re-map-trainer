@@ -2439,6 +2439,8 @@ struct select_spawn_result_t
 {
 	edict_t		*spot;
 	bool		any_valid = false; // set if a spawn point was found, even if it was taken
+	int32_t		total_spawn_points = 0;
+	int32_t		selected_spawn_index = -1;
 };
 
 select_spawn_result_t SelectDeathmatchSpawnPoint(bool farthest, bool force_spawn, bool fallback_to_ctf_or_start);
