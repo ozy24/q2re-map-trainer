@@ -215,30 +215,6 @@ This creates a `trainer.log` file in your Quake 2 directory with detailed inform
 
 ---
 
-## 🎯 Recommended Workflow for Duel Practice
-
-1. **Learn the map** (Day 1-2):
-   - Use Path Training to learn item locations
-   - Run routes multiple times with different category settings
-
-2. **Build muscle memory** (Day 3-5):
-   - Use Jump Trainer to practice difficult jumps
-   - Save positions for tricky areas
-   - Enable speedometer to optimize movement
-
-3. **Master timing** (Day 6+):
-   - Switch to Timing Training
-   - Focus on Red Armor and Mega Health first
-   - Aim for ±0.5 seconds, then ±0.2 seconds
-   - Practice until timings are automatic
-
-4. **Polish movement** (Ongoing):
-   - Keep Bhop Consistency enabled during practice
-   - Aim for "Perfect" on every jump
-   - Use speedometer to maintain high speeds
-
----
-
 ## 🔧 Advanced Settings
 
 ### Free Collect Mode
