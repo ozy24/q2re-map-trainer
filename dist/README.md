@@ -33,6 +33,16 @@ Practice movement mechanics and difficult jumps.
 
 ---
 
+## 📸 Screenshots
+
+![Screenshot 1](../docs/img/1.png)
+
+![Screenshot 2](../docs/img/2.png)
+
+![Screenshot 3](../docs/img/3.png)
+
+---
+
 ## 📥 Installation
 
 1. **Download** `game_x64.dll` from the latest release
