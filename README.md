@@ -31,15 +31,23 @@ Practice movement mechanics and difficult jumps.
 - **Bhop Consistency**: Get real-time feedback on bunny hop timing
 - **Speedometer**: Track your movement speed
 
+### 🎲 **Spawn Trainer**
+Learn spawn point locations and practice spawn awareness.
+
+- **Spawn Bot**: Creates a bot that respawns at different spawn points
+- **Spawn Order**: Choose between vanilla spawn order or random (no repeat)
+- **Beacon Beep**: Audio cue to help locate spawn points
+- Perfect for learning spawn locations and practicing spawn awareness
+
 ---
 
 ## 📸 Screenshots
 
-![Screenshot 1](../docs/img/1.png)
+![Screenshot 1](docs/img/1.png)
 
-![Screenshot 2](../docs/img/2.png)
+![Screenshot 2](docs/img/2.png)
 
-![Screenshot 3](../docs/img/3.png)
+![Screenshot 3](docs/img/3.png)
 
 ---
 
@@ -136,6 +144,22 @@ Now you can:
 
 Enable from the main menu to see your horizontal movement speed in real-time. Great for optimizing strafe jumping and maintaining speed through turns.
 
+### Spawn Trainer
+
+1. Open the menu (TAB)
+2. Select **"Spawn Trainer"**
+3. Enable **"Spawn Trainer: Disabled"** (toggles to Enabled)
+4. A bot will spawn and respawn at different spawn points on the map
+5. Configure options:
+   - **Spawn Order**: Choose "Vanilla" (default game order) or "Random (No Repeat)" (random spawns without repeating)
+   - **Beacon Beep**: Enable/disable audio beep to help locate spawn points
+
+**Tips:**
+- Use "Random (No Repeat)" to experience all spawn points on a map
+- Enable beacon beep to hear where the bot spawns
+- Great for learning spawn locations and practicing spawn awareness in duels
+- The bot will automatically respawn when killed
+
 ---
 
 ## ⚙️ Console Commands
@@ -178,6 +202,13 @@ Enable from the main menu to see your horizontal movement speed in real-time. Gr
 3. Practice bunny hopping
 4. Aim for "Perfect" on every jump
 5. Watch out for "Late (Nf)" feedback to improve timing
+
+### Learning Spawn Points
+1. Enable **Spawn Trainer** from the main menu
+2. Use "Random (No Repeat)" mode to see all spawn points
+3. Enable beacon beep to hear spawn locations
+4. Follow the bot to learn where players can spawn
+5. Practice predicting spawn locations for better duel awareness
 
 ---
 
