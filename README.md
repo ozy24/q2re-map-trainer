@@ -1,9 +1,6 @@
 # Quake 2 Rerelease Map Trainer
 
 A training mod for Quake 2 Rerelease that helps players learn maps, improve item timing, and practice movement mechanics.
-
-**Version**: v0.94 beta by ozy
-
 ---
 
 ## 🎯 Features
@@ -174,41 +171,6 @@ Enable from the main menu to see your horizontal movement speed in real-time. Gr
 
 ---
 
-## 🎓 Training Tips
-
-### Learning a New Map
-1. Enable **Path Training** with all categories
-2. Run the route several times
-3. Note the item sequence - it's randomized but teaches you where everything is
-4. Disable categories to focus on specific item types (e.g., just armor + health)
-
-### Improving Item Timing for Duels
-1. Enable **Timing Training**
-2. Focus on major items first: Red Armor, Mega Health, Quad
-3. Goal: Get within ±0.5 seconds consistently
-4. Advanced: Try to be slightly early (-0.2s to 0s) to deny opponent
-
-### Practicing Difficult Jumps
-1. Enable **Jump Trainer**
-2. Navigate to the jump location
-3. Save position with `savepos` (F5)
-4. Attempt the jump
-5. Use `loadpos` (F6) to retry instantly
-6. Enable speedometer to optimize your speed
-
-### Bhop Consistency Practice
-1. Enable **Bhop Consistency** in Jump Trainer menu
-2. Find an open area
-3. Practice bunny hopping
-4. Aim for "Perfect" on every jump
-5. Watch out for "Late (Nf)" feedback to improve timing
-
-### Learning Spawn Points
-1. Enable **Spawn Trainer** from the main menu
-2. Use "Random (No Repeat)" mode to see all spawn points
-3. Enable beacon beep to hear spawn locations
-4. Follow the bot to learn where players can spawn
-5. Practice predicting spawn locations for better duel awareness
 
 ---
 
