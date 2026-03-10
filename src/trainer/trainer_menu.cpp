@@ -6,7 +6,7 @@
 
 // ==================== VERSION ====================
 
-#define TRAINER_VERSION "v0.93 beta by ozy"
+#define TRAINER_VERSION "v1.0.0 by ozy"
 
 // ==================== MENU SYSTEM ====================
 

@@ -1,0 +1,33 @@
+name: Build Windows DLL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup vcpkg
+        uses: microsoft/setup-vcpkg@v3
+
+      - name: Build
+        run: |
+          cd src
+          vcpkg install
+          msbuild game.sln /p:Configuration=Release /p:Platform=x64 /m
+
+      - name: Upload game_x64.dll
+        uses: actions/upload-artifact@v4
+        with:
+          name: game_x64
+          path: dist/game_x64.dll
