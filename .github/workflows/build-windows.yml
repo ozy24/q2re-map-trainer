@@ -18,13 +18,18 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Setup vcpkg
-        uses: microsoft/setup-vcpkg@v3
+        run: |
+          git clone https://github.com/Microsoft/vcpkg.git $env:GITHUB_WORKSPACE/vcpkg
+          & $env:GITHUB_WORKSPACE/vcpkg/bootstrap-vcpkg.bat -disableMetrics
+        shell: pwsh
 
       - name: Build
         run: |
+          $env:VCPKG_ROOT = "$env:GITHUB_WORKSPACE/vcpkg"
           cd src
-          vcpkg install
+          & $env:VCPKG_ROOT/vcpkg.exe install
           msbuild game.sln /p:Configuration=Release /p:Platform=x64 /m
+        shell: pwsh
 
       - name: Upload game_x64.dll
         uses: actions/upload-artifact@v4
