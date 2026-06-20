@@ -144,8 +144,8 @@ void test_path_target_skip()
 
 void test_version_constants()
 {
-	expect_str_eq(TRAINER_VERSION_STRING, "1.2.0", "version string");
-	expect_true(TRAINER_VERSION_MAJOR == 1 && TRAINER_VERSION_MINOR == 2 && TRAINER_VERSION_PATCH == 0,
+	expect_str_eq(TRAINER_VERSION_STRING, "1.2.1", "version string");
+	expect_true(TRAINER_VERSION_MAJOR == 1 && TRAINER_VERSION_MINOR == 2 && TRAINER_VERSION_PATCH == 1,
 		"version components");
 }
 } // namespace
