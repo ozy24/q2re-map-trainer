@@ -7,6 +7,16 @@
 #include "trainer_logic.h"
 #include "trainer_cvars.h"
 
+namespace
+{
+// trainer_logic mirrors item_flags_t bits for host tests; catch SDK drift at DLL compile time.
+static_assert(trainer_logic::IF_WEAPON == static_cast<uint32_t>(IF_WEAPON));
+static_assert(trainer_logic::IF_AMMO == static_cast<uint32_t>(IF_AMMO));
+static_assert(trainer_logic::IF_ARMOR == static_cast<uint32_t>(IF_ARMOR));
+static_assert(trainer_logic::IF_POWERUP == static_cast<uint32_t>(IF_POWERUP));
+static_assert(trainer_logic::IF_HEALTH == static_cast<uint32_t>(IF_HEALTH));
+} // namespace
+
 // ==================== MODE MANAGEMENT ====================
 
 static void MapTrainer_TeardownPathMode()

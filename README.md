@@ -277,7 +277,7 @@ Shows detailed debug information about timing calculations. Use this if you want
 ## 🙏 Credits
 
 **Created by**: ozy  
-**Version**: v1.1.0  
+**Version**: v1.2.0  
 **Architecture**: "Thin vanilla" design - minimal changes to base game code  
 
 Built with the Quake 2 Rerelease SDK  
@@ -286,6 +286,15 @@ Copyright (c) ZeniMax Media Inc.
 ---
 
 ## 📝 Changelog
+
+### v1.2.0 (2026-06-20)
+- **Settings persist across game restarts** — archived `trainer_*` cvars restore menu options after exit/relaunch (map-change persistence from v1.1.0 unchanged)
+- **Bhop timing uses real seconds** — chain timeout and perfect/late feedback are frame-rate independent
+- **Spawn Trainer** — resume retries when a client slot is busy; killing the bot no longer awards DM frags; README documents slot usage
+- **Path training** — welcome prompt re-shows after respawn before first pickup; item categories use registry `IF_*` flags (custom items with e.g. `IF_HEALTH` follow the Health toggle)
+- **Performance** — path trainer caches item edicts instead of scanning entities each check
+- **Robustness** — `trainer_mode_t` centralizes path/timing exclusivity; TagMalloc fail-soft; `trainer.log` appends with session banners
+- **Developer** — `trainer_logic` host unit tests (`test.bat`), CI test step, menu row index enums, `g_local.h` prototype cleanup
 
 ### v1.1.0 (2026-06-20)
 - **Settings now persist across map changes** — trainer configuration is retained when the map changes, and active trainers auto-resume on the new map (path training rebuilds the new map's item list, the spawn bot re-spawns, timings start fresh)
