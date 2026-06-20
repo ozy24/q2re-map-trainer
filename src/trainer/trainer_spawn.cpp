@@ -36,9 +36,10 @@ bool MapTrainer_SnapSpawnTrainerToGround(edict_t *bot)
 {
 	contents_t mask = G_GetClipMask(bot);
 	vec3_t start = bot->s.origin;
-	start[2] += 2.0f;
 	vec3_t end = start;
-	end[2] -= 512.0f;
+	// Short drop only — settle from DM +9 hover onto the spawn surface, not floor below raised pads
+	constexpr float max_snap_drop = 32.0f;
+	end[2] -= max_snap_drop;
 
 	trace_t tr = gi.trace(start, bot->mins, bot->maxs, end, bot, mask);
 	if (tr.fraction >= 1.0f)

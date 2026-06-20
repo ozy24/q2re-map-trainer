@@ -1514,9 +1514,7 @@ bool SelectSpawnPoint(edict_t *ent, vec3_t &origin, vec3_t &angles, bool force_s
 
 		if (spot)
 		{
-			origin = spot->s.origin;
-			if (!MapTrainer_IsSpawnTrainerBot(ent))
-				origin[2] += 9;
+			origin = spot->s.origin + vec3_t{ 0, 0, 9 };
 			angles = spot->s.angles;
 
 			return true;
