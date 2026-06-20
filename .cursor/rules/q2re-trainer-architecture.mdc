@@ -1,0 +1,51 @@
+---
+description: Thin-vanilla architecture and trainer module conventions for Q2RE map trainer
+globs: src/**/*
+alwaysApply: false
+---
+
+# Thin Vanilla Architecture
+
+All trainer logic lives in **`src/trainer/`**. Keep vanilla SDK files (`g_*.cpp`, `p_*.cpp`, `m_*.cpp`) close to upstream for clean merges.
+
+## Editing rules
+
+- Put new behavior in `src/trainer/`, not vanilla files
+- Vanilla files: **minimal hooks only** — `MapTrainer_*` call or small conditional, tagged `// [Map Trainer]`
+- Do not move logic into vanilla files or change vanilla function signatures
+- Public API: **`src/trainer/trainer.h`** — every function vanilla calls is declared there
+
+## Module layout
+
+| File | Role |
+|------|------|
+| `trainer.h` | Data structures, `MapTrainer_*` API, `map_trainer_t`, `map_trainer_config_t` |
+| `trainer_core.cpp` | Init, item-list building, category filtering, config save/load |
+| `trainer_path.cpp` | Item path trainer |
+| `trainer_timing.cpp` | Respawn timing (32 concurrent; megahealth decay) |
+| `trainer_jump.cpp` | Speedometer, savepos/loadpos, bhop tracking |
+| `trainer_spawn.cpp` | Spawn trainer bot lifecycle |
+| `trainer_menu.cpp` | PMenu UI and toggle handlers |
+| `trainer_debug.cpp` | `TrainerLog()` gated by `trainer_debug` cvar |
+
+## State lifetimes (critical)
+
+- **`level.map_trainer`** (`map_trainer_t`): per-map runtime. `level` is zeroed each map load; `TAG_LEVEL` allocs freed before respawn. `MapTrainer_Init()` runs last in `SpawnEntities()` (`g_spawn.cpp`), after items exist
+- **`game.map_trainer_config`** (`map_trainer_config_t`): persistent across map changes
+
+**Config mirroring:** `MapTrainer_SaveConfig()` / `MapTrainer_LoadConfig()` mirror config fields only — never runtime state (item arrays, targets, timings, bot edicts). New persisted state: add to `map_trainer_config_t` + both mirror helpers, or keep runtime-only in `map_trainer_t`
+
+## Vanilla hooks (search `// [Map Trainer]` or `MapTrainer_`)
+
+- `g_spawn.cpp` — `MapTrainer_Init()` end of `SpawnEntities`
+- `g_main.cpp` — `MapTrainer_RunFrame()` per server frame
+- `g_items.cpp` — pickup hooks → `MapTrainer_OnItemPickup` / `MapTrainer_OnTimingItemPickup`
+- `p_client.cpp` — speedometer, timing, bhop, spawn bot, welcome message
+- `g_cmds.cpp` — `maptrainer`, `savepos`, `loadpos`
+
+## Gotchas
+
+- Path and Timing trainers are **mutually exclusive**
+- `MapTrainer_BuildItemList` frees/rebuilds `items` — `MapTrainer_Init` nulls first to avoid double-free
+- Spawn bot via `ClientChooseSlot`/`ClientConnect`/`ClientBegin` on a **normal server frame**, not during map spawn
+- PMenu: `PMenu_Update` is ~1s throttled — run immediate side effects in toggle handlers, not update callbacks

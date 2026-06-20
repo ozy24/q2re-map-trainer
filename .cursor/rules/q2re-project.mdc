@@ -1,0 +1,42 @@
+---
+description: Q2RE map trainer project context, build workflow, and verification
+alwaysApply: true
+---
+
+# Q2RE Map Trainer
+
+Training mod for **Quake 2 Rerelease (Q2RE)** — builds as `game_x64.dll` from the Q2RE C++ SDK. Features: item-path training, item-timing practice, jump/bhop trainer, speedometer, spawn trainer. Runs in deathmatch; DLL goes in Q2RE `baseq2/`.
+
+## Build (Windows + VS 2022 + Git)
+
+Dependencies: vcpkg manifest (`src/vcpkg.json`: `fmt`, `jsoncpp`). MSBuild via `Directory.Build.props`. vcpkg tool is a **git submodule** at `vcpkg/`; installs go to `src/vcpkg_installed/` (gitignored).
+
+**First-time setup:**
+```powershell
+git submodule update --init --recursive
+.\scripts\setup-vcpkg.ps1
+```
+
+**Build from repo root:**
+```cmd
+.\build.bat                                    REM Debug|x64 (default)
+set MUFFMODE_BUILD_CONFIG=Release && build.bat REM Release (CI)
+.\play.bat                                     REM copy dist\game_x64.dll + launch
+```
+
+- Output: `dist/game_x64.dll`
+- `build.bat`: vswhere, vcpkg checks, builds `src/game.sln`
+- Edit Steam paths in `play.bat` if needed
+- Details: `docs/BUILD_SETUP.md`, CI: `.github/workflows/build-windows.yml`
+- **Mod version:** `src/trainer/trainer_version.h` + repo-root `VERSION` (also update `README.md` on bump)
+- **No automated tests** — verify in-game
+
+## Manual verification
+
+1. Build + deploy DLL to `<Q2RE>/baseq2/`, launch deathmatch (`+set deathmatch 1 +map q2dm1`)
+2. **TAB** or `maptrainer` for menu
+3. `trainer_debug 1` → `trainer.log` via `TrainerLog()` in `trainer/trainer_debug.cpp`
+
+## Architecture pointer
+
+Follow **thin vanilla** conventions in `src/trainer/` — see rule `q2re-trainer-architecture` and `docs/THIN_VANILLA_PRINCIPLES.md`.
