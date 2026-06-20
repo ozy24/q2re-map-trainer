@@ -4,6 +4,7 @@
 #include "../g_local.h"
 #include "trainer.h"
 #include "trainer_config.h"
+#include "trainer_logic.h"
 
 // ==================== PATH TRAINING FEATURE ====================
 
@@ -40,8 +41,8 @@ void MapTrainer_PickNewTarget()
 		map_trainer_unique_item_t *unique_item = &level.map_trainer.unique_items[i];
 		
 		// Skip if this is the same type as previous (if we have more than one type)
-		if (level.map_trainer.unique_item_count > 1 && previous_class_name != nullptr &&
-			Q_strcasecmp(unique_item->class_name, previous_class_name) == 0)
+		if (trainer_logic::ShouldSkipUniqueTypeForPick(level.map_trainer.unique_item_count,
+			unique_item->class_name, previous_class_name))
 		{
 			continue;
 		}

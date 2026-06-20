@@ -4,6 +4,7 @@
 #include "../g_local.h"
 #include "trainer.h"
 #include "trainer_config.h"
+#include "trainer_logic.h"
 #include "trainer_cvars.h"
 
 // ==================== MODE MANAGEMENT ====================
@@ -217,121 +218,44 @@ void MapTrainer_LoadConfig()
 // ==================== UTILITY FUNCTIONS ====================
 
 // Helper to convert $item_hyperblaster to Hyperblaster
+static trainer_logic::category_toggles_t MapTrainer_CategoryToggles()
+{
+	return {
+		level.map_trainer.weapons_enabled,
+		level.map_trainer.ammo_enabled,
+		level.map_trainer.health_enabled,
+		level.map_trainer.armor_enabled,
+		level.map_trainer.powerups_enabled
+	};
+}
+
 static void MapTrainer_FriendlyNameFromPickup(const char* pickup_name, char* out, size_t out_size)
 {
-	if (!pickup_name || !*pickup_name)
-	{
-		Q_strlcpy(out, "Item", out_size);
-		return;
-	}
-	if (pickup_name[0] == '$')
-	{
-		// Skip the '$' and 'item_' prefix if present
-		const char* name = pickup_name + 1;
-		if (strncmp(name, "item_", trainer_config::FRIENDLY_NAME_ITEM_PREFIX_LEN) == 0)
-			name += trainer_config::FRIENDLY_NAME_ITEM_PREFIX_LEN;
-		// Capitalize first letter, lowercase the rest, and replace underscores with spaces
-		if (*name)
-		{
-			char buf[64];
-			Q_strlcpy(buf, name, sizeof(buf));
-			buf[0] = toupper(buf[0]);
-			for (size_t i = 1; buf[i]; ++i)
-			{
-				if (buf[i] == '_')
-					buf[i] = ' ';
-				else
-					buf[i] = tolower(buf[i]);
-			}
-			Q_strlcpy(out, buf, out_size);
-			return;
-		}
-	}
-	// Fallback: just copy as is
-	Q_strlcpy(out, pickup_name, out_size);
+	trainer_logic::FriendlyNameFromPickup(pickup_name, out, out_size);
 }
 
 // ==================== CATEGORY MANAGEMENT ====================
 
 bool MapTrainer_IsCombinableHealthPack(const char *class_name)
 {
-	// These health packs can be combined when the option is enabled
-	// Mega health is NOT included in this list
-	return (Q_strcasecmp(class_name, "item_health_small") == 0 ||
-			Q_strcasecmp(class_name, "item_health") == 0 ||
-			Q_strcasecmp(class_name, "item_health_large") == 0);
+	return trainer_logic::IsCombinableHealthPack(class_name);
 }
 
 const char* MapTrainer_GetNormalizedClassName(const char *class_name)
 {
-	// If combine health packs is enabled, normalize health pack class names (combine them)
-	if (level.map_trainer.combine_health_packs && MapTrainer_IsCombinableHealthPack(class_name))
-	{
-		return "item_health_combined"; // Virtual class name for combined health packs
-	}
-	return class_name;
+	return trainer_logic::NormalizeClassName(class_name, level.map_trainer.combine_health_packs);
 }
 
 const char* MapTrainer_GetDisplayFriendlyName(const char *class_name, const char *original_friendly_name)
 {
-	// If combine health packs is enabled, use generic name for combinable health packs
-	if (level.map_trainer.combine_health_packs && MapTrainer_IsCombinableHealthPack(class_name))
-	{
-		return "Health Pack"; // Generic display name for combined health packs
-	}
-	return original_friendly_name;
+	return trainer_logic::DisplayFriendlyName(class_name, original_friendly_name, level.map_trainer.combine_health_packs);
 }
 
 // ==================== CATEGORY MANAGEMENT ====================
 
 static bool MapTrainer_IsItemCategoryEnabledByClassName(const char *class_name)
 {
-	if (!class_name || !*class_name)
-		return true;
-
-	// Virtual class from combine-health-packs mode
-	if (Q_strcasecmp(class_name, "item_health_combined") == 0)
-		return level.map_trainer.health_enabled;
-
-	// Weapons
-	if (strstr(class_name, "weapon_") == class_name ||
-		Q_strcasecmp(class_name, "item_quad") == 0)
-	{
-		return level.map_trainer.weapons_enabled;
-	}
-
-	// Ammo
-	if (strstr(class_name, "ammo_") == class_name)
-		return level.map_trainer.ammo_enabled;
-
-	// Health items
-	if (strstr(class_name, "item_health") == class_name ||
-		Q_strcasecmp(class_name, "item_health_small") == 0 ||
-		Q_strcasecmp(class_name, "item_health_large") == 0 ||
-		Q_strcasecmp(class_name, "item_health_mega") == 0)
-	{
-		return level.map_trainer.health_enabled;
-	}
-
-	// Armor items (both naming conventions)
-	if (strstr(class_name, "item_armor") == class_name ||
-		Q_strcasecmp(class_name, "item_jacket_armor") == 0 ||
-		Q_strcasecmp(class_name, "item_combat_armor") == 0 ||
-		Q_strcasecmp(class_name, "item_body_armor") == 0 ||
-		Q_strcasecmp(class_name, "item_armor_jacket") == 0 ||
-		Q_strcasecmp(class_name, "item_armor_combat") == 0 ||
-		Q_strcasecmp(class_name, "item_armor_body") == 0 ||
-		Q_strcasecmp(class_name, "item_power_screen") == 0 ||
-		Q_strcasecmp(class_name, "item_power_shield") == 0)
-	{
-		return level.map_trainer.armor_enabled;
-	}
-
-	// Powerups (remaining item_*)
-	if (strstr(class_name, "item_") == class_name)
-		return level.map_trainer.powerups_enabled;
-
-	return true;
+	return trainer_logic::IsItemCategoryEnabledByClassName(class_name, MapTrainer_CategoryToggles());
 }
 
 bool MapTrainer_IsItemCategoryEnabledForItem(const gitem_t *item)
@@ -339,25 +263,10 @@ bool MapTrainer_IsItemCategoryEnabledForItem(const gitem_t *item)
 	if (!item)
 		return true;
 
-	if (item->classname && Q_strcasecmp(item->classname, "item_quad") == 0)
-		return level.map_trainer.weapons_enabled;
-
-	const item_flags_t flags = item->flags;
-	if (flags & IF_WEAPON)
-		return level.map_trainer.weapons_enabled;
-	if (flags & IF_AMMO)
-		return level.map_trainer.ammo_enabled;
-	if (flags & IF_HEALTH)
-		return level.map_trainer.health_enabled;
-	if (flags & IF_ARMOR)
-		return level.map_trainer.armor_enabled;
-	if (flags & IF_POWERUP)
-		return level.map_trainer.powerups_enabled;
-
-	if (item->classname)
-		return MapTrainer_IsItemCategoryEnabledByClassName(item->classname);
-
-	return true;
+	return trainer_logic::IsItemCategoryEnabledForItem(
+		static_cast<uint32_t>(item->flags),
+		item->classname,
+		MapTrainer_CategoryToggles());
 }
 
 bool MapTrainer_IsItemCategoryEnabled(const char *class_name)

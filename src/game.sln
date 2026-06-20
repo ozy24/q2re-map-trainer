@@ -5,6 +5,8 @@ VisualStudioVersion = 17.7.33808.371
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "game", "game.vcxproj", "{C994B5EA-3058-403C-953D-3673C2C4D64E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "trainer_tests", "..\tests\trainer_tests.vcxproj", "{A8E3F1C2-9B4D-4E6F-A1C3-7D2E5F8B9C01}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -15,6 +17,10 @@ Global
 		{C994B5EA-3058-403C-953D-3673C2C4D64E}.Debug|x64.Build.0 = Debug|x64
 		{C994B5EA-3058-403C-953D-3673C2C4D64E}.Release|x64.ActiveCfg = Release|x64
 		{C994B5EA-3058-403C-953D-3673C2C4D64E}.Release|x64.Build.0 = Release|x64
+		{A8E3F1C2-9B4D-4E6F-A1C3-7D2E5F8B9C01}.Debug|x64.ActiveCfg = Debug|x64
+		{A8E3F1C2-9B4D-4E6F-A1C3-7D2E5F8B9C01}.Debug|x64.Build.0 = Debug|x64
+		{A8E3F1C2-9B4D-4E6F-A1C3-7D2E5F8B9C01}.Release|x64.ActiveCfg = Release|x64
+		{A8E3F1C2-9B4D-4E6F-A1C3-7D2E5F8B9C01}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

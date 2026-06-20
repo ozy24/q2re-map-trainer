@@ -26,6 +26,7 @@ All trainer logic lives in **`src/trainer/`**. Keep vanilla SDK files (`g_*.cpp`
 | `trainer_jump.cpp` | Speedometer, savepos/loadpos, bhop tracking |
 | `trainer_spawn.cpp` | Spawn trainer bot lifecycle |
 | `trainer_menu.cpp` | PMenu UI and toggle handlers |
+| `trainer_logic.cpp` | Engine-free pure logic (category filter, timing math, path pick rules); host-tested |
 | `trainer_debug.cpp` | `TrainerLog()` gated by `trainer_debug` cvar |
 
 ## State lifetimes (critical)

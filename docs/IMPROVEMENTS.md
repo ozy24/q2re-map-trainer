@@ -99,11 +99,9 @@ the slot requirement; killing the Spawn Trainer bot no longer awards DM frags (`
 `trainer_debug.cpp` appends to `"trainer.log"` in the process working directory with a per-session
 banner; README troubleshooting documents location and append behavior.
 
-### 13. No automated verification **[Confirmed]** — *medium effort*
-Everything is validated manually in-game. The pure-logic pieces (target selection, category filtering,
-timing math, version parsing) could be unit-tested.
-- **Fix:** factor the testable logic behind thin interfaces and add a small host-compiled test target
-  (no engine), runnable in CI alongside the build.
+### 13. No automated verification **[Addressed]**
+Pure trainer logic lives in `trainer_logic.cpp` (engine-free). `tests/trainer_tests.vcxproj` builds
+`dist/trainer_tests_x64.exe`; CI runs it after the DLL build. Local: `test.bat`.
 
 ### 14. TagMalloc return values are assumed non-null **[Addressed]**
 `MapTrainer_BuildItemList` / `MapTrainer_BuildUniqueItemsList` check `gi.TagMalloc` results and fail
@@ -139,6 +137,7 @@ already handled (`unique_item_count > 1` guard in target selection).
 - **#12 trainer.log** → append mode + README.
 - **#14 TagMalloc guards** → `trainer_core.cpp`.
 - **#15 welcome / first-pickup** → `MapTrainer_ScheduleWelcomeMessage` (`trainer_path.cpp`).
+- **#13 automated tests** → `trainer_logic.cpp` + `tests/trainer_tests.vcxproj` + CI test step.
 
 ---
 
@@ -150,7 +149,7 @@ already handled (`unique_item_count > 1` guard in target selection).
 4. ~~**#3** frame-rate-independent bhop timing~~ — done.
 5. ~~**#5** item-availability caching~~ and ~~**#8** item classification~~ — done.
 6. ~~**#7** menu index enums~~ and polish **#11–#15** — done.
-7. Longer term: **#13** automated tests.
+7. ~~**#13** automated tests~~ — done.
 
 > Note: #1 (per-client state) is intentionally **not** on this list — global state is by design for
 > the single-practitioner use case.

@@ -32,6 +32,12 @@ jobs:
           msbuild game.sln /p:Configuration=Release /p:Platform=x64 /m
         shell: pwsh
 
+      - name: Run trainer unit tests
+        run: |
+          & "$env:GITHUB_WORKSPACE/dist/trainer_tests_x64.exe"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        shell: pwsh
+
       - name: Upload game_x64.dll
         uses: actions/upload-artifact@v4
         with:

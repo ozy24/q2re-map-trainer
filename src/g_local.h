@@ -2046,28 +2046,6 @@ void      P_ToggleFlashlight(edict_t *ent, bool state);
 bool      Entity_IsVisibleToPlayer(edict_t* ent, edict_t* player);
 void      Compass_Update(edict_t *ent, bool first);
 
-// Map Trainer System
-void      MapTrainer_Init();
-void      MapTrainer_LoadCSV(const char *mapname);
-void      MapTrainer_BuildUniqueItemsList();
-void      MapTrainer_PickNewTarget();
-bool      MapTrainer_IsTargetItem(edict_t *ent);
-bool      MapTrainer_IsItemCategoryEnabled(const char *class_name);
-bool      MapTrainer_IsItemCategoryEnabledForItem(const gitem_t *item);
-bool      MapTrainer_IsItemAvailable(int32_t item_index);
-void      MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player);
-void      MapTrainer_ShowWelcomeMessage(edict_t *player);
-void      MapTrainer_OpenMenu(edict_t *ent);
-void      MapTrainer_UpdateSpeedometer(edict_t *player);
-void      MapTrainer_CheckArmorTiming(edict_t *player);
-void      MapTrainer_CheckMegahealthTiming(edict_t *player);
-map_trainer_t::timing_entry_t* MapTrainer_FindTimingEntry(const char *classname);
-map_trainer_t::timing_entry_t* MapTrainer_CreateOrUpdateTimingEntry(const char *classname, const char *item_name, 
-	const vec3_t &position, gtime_t pickup_time, gtime_t respawn_time);
-void      Cmd_MapTrainerMenu_f(edict_t *ent);
-void      Cmd_SetSpawn_f(edict_t *ent);
-void      Cmd_WarpSpawn_f(edict_t *ent);
-
 //
 // g_utils.c
 //

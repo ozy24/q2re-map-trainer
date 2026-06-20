@@ -4,22 +4,9 @@
 #include "../g_local.h"
 #include "trainer.h"
 #include "trainer_config.h"
+#include "trainer_logic.h"
 
 // ==================== TIMING TRAINER FEATURE ====================
-
-// Helper function to get timing window based on challenge difficulty
-static float MapTrainer_GetTimingWindow(timing_challenge_mode_t mode)
-{
-	switch (mode)
-	{
-		case timing_challenge_mode_t::EASY:   return trainer_config::TIMING_WINDOW_EASY_SEC;
-		case timing_challenge_mode_t::MEDIUM: return trainer_config::TIMING_WINDOW_MEDIUM_SEC;
-		case timing_challenge_mode_t::HARD:   return trainer_config::TIMING_WINDOW_HARD_SEC;
-		case timing_challenge_mode_t::PRO:    return trainer_config::TIMING_WINDOW_PRO_SEC;
-		case timing_challenge_mode_t::OFF:
-		default:                               return 0.0f; // Not used when OFF
-	}
-}
 
 namespace
 {
@@ -382,13 +369,14 @@ void MapTrainer_CheckArmorTiming(edict_t *player)
 			// Check if Timing Challenge mode is enabled
 			if (level.map_trainer.timing_challenge_mode != timing_challenge_mode_t::OFF)
 			{
-				float window = MapTrainer_GetTimingWindow(level.map_trainer.timing_challenge_mode);
-				float abs_time_diff = fabsf(time_diff);
-				
-				if (abs_time_diff <= window)
+				const auto challenge = trainer_logic::EvaluateTimingChallenge(time_diff,
+					static_cast<int32_t>(level.map_trainer.timing_challenge_mode));
+				const float window = trainer_logic::TimingWindowSeconds(
+					static_cast<int32_t>(level.map_trainer.timing_challenge_mode));
+
+				if (challenge.success)
 				{
-					// SUCCESS - within timing window
-					const char* quality = (abs_time_diff <= trainer_config::TIMING_PERFECT_THRESHOLD_SEC) ? "Perfect timing!" : "Good timing!";
+					const char* quality = challenge.perfect ? "Perfect timing!" : "Good timing!";
 					gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("{}: SUCCESS {:+.2f}s", 
 						entry->item_name ? entry->item_name : "?", time_diff).data());
 					gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("{} - {} ({:+.2f}s)", 
@@ -396,7 +384,6 @@ void MapTrainer_CheckArmorTiming(edict_t *player)
 				}
 				else
 				{
-					// FAILURE - outside timing window
 					gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("{}: FAILED {:+.2f}s", 
 						entry->item_name ? entry->item_name : "?", time_diff).data());
 					gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("{} - Timing off by {:+.2f}s (±{:.0f}s window)", 
@@ -526,19 +513,19 @@ void MapTrainer_CheckMegahealthTiming(edict_t *player)
 			// Check if Timing Challenge mode is enabled
 			if (level.map_trainer.timing_challenge_mode != timing_challenge_mode_t::OFF)
 			{
-				float window = MapTrainer_GetTimingWindow(level.map_trainer.timing_challenge_mode);
-				float abs_time_diff = fabsf(time_diff);
-				
-				if (abs_time_diff <= window)
+				const auto challenge = trainer_logic::EvaluateTimingChallenge(time_diff,
+					static_cast<int32_t>(level.map_trainer.timing_challenge_mode));
+				const float window = trainer_logic::TimingWindowSeconds(
+					static_cast<int32_t>(level.map_trainer.timing_challenge_mode));
+
+				if (challenge.success)
 				{
-					// SUCCESS - within timing window
-					const char* quality = (abs_time_diff <= trainer_config::TIMING_PERFECT_THRESHOLD_SEC) ? "Perfect timing!" : "Good timing!";
+					const char* quality = challenge.perfect ? "Perfect timing!" : "Good timing!";
 					gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Megahealth: SUCCESS {:+.2f}s", time_diff).data());
 					gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("Megahealth - {} ({:+.2f}s)", quality, time_diff).data());
 				}
 				else
 				{
-					// FAILURE - outside timing window
 					gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Megahealth: FAILED {:+.2f}s", time_diff).data());
 					gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("Megahealth - Timing off by {:+.2f}s (±{:.0f}s window)", time_diff, window).data());
 				}

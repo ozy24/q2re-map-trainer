@@ -142,6 +142,7 @@
     <ClInclude Include="q_vec3.h" />
     <ClInclude Include="rogue\m_rogue_carrier.h" />
     <ClInclude Include="trainer\trainer.h" />
+    <ClInclude Include="trainer\trainer_logic.h" />
     <ClInclude Include="trainer\trainer_version.h" />
     <ClInclude Include="rogue\m_rogue_stalker.h" />
     <ClInclude Include="rogue\m_rogue_turret.h" />
@@ -243,6 +244,7 @@
     <ClCompile Include="xatrix\m_xatrix_fixbot.cpp" />
     <ClCompile Include="xatrix\m_xatrix_gekk.cpp" />
     <ClCompile Include="xatrix\p_xatrix_weapon.cpp" />
+    <ClCompile Include="trainer\trainer_logic.cpp" />
     <ClCompile Include="trainer\trainer_core.cpp" />
     <ClCompile Include="trainer\trainer_cvars.cpp" />
     <ClCompile Include="trainer\trainer_debug.cpp" />

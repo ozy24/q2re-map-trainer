@@ -267,6 +267,11 @@ Shows detailed debug information about timing calculations. Use this if you want
 - **Position Match Tolerance**: 32 units (for item detection)
 - **Max Concurrent Timings**: 32 items
 
+### Development
+
+- `build.bat` — builds `dist/game_x64.dll` and `dist/trainer_tests_x64.exe`
+- `test.bat` — build + run host unit tests for `trainer_logic` (no engine; same tests run in CI)
+
 ---
 
 ## 🙏 Credits
