@@ -142,6 +142,7 @@
     <ClInclude Include="q_vec3.h" />
     <ClInclude Include="rogue\m_rogue_carrier.h" />
     <ClInclude Include="trainer\trainer.h" />
+    <ClInclude Include="trainer\trainer_version.h" />
     <ClInclude Include="rogue\m_rogue_stalker.h" />
     <ClInclude Include="rogue\m_rogue_turret.h" />
     <ClInclude Include="rogue\m_rogue_widow.h" />
