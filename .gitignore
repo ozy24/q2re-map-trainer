@@ -71,6 +71,20 @@ downloads/
 packages/
 installed/
 
+# vcpkg submodule (tracked); ignore local bootstrap/install artifacts
+vcpkg/vcpkg.exe
+vcpkg/vcpkg.disable-metrics
+vcpkg/buildtrees/
+vcpkg/packages/
+vcpkg/downloads/
+vcpkg/installed/
+
+# Build output (keep dist/README.md tracked)
+dist/*.dll
+dist/*.lib
+dist/*.exp
+dist/*.pdb
+
 # ------------------------------
 # Game-specific compiled files
 # ------------------------------
