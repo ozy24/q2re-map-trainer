@@ -79,19 +79,6 @@ After installation, run `game maptrain` in the console before loading a map.
 ### Opening the Menu
 Press **TAB** to open the trainer menu (or type `maptrainer` in console).
 
-### Recommended Key Bindings
-Open the console (~) and type:
-```
-bind F5 "savepos"
-bind F6 "loadpos"
-bind TAB "maptrainer"
-```
-
-Now you can:
-- **F5**: Save your current position
-- **F6**: Teleport back to saved position
-- **TAB**: Open the trainer menu
-
 ---
 
 ## 📖 Usage Guide
