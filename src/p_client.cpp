@@ -3272,6 +3272,18 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 		return;
 	}
 
+	// [Map Trainer] Spawn trainer bot is a frozen spawn marker, not combat AI
+	if (MapTrainer_IsSpawnTrainerBot(ent) && level.map_trainer.spawn_trainer_enabled && !ent->deadflag)
+	{
+		client->ps.pmove.pm_type = PM_FREEZE;
+		client->ps.pmove.pm_flags &= ~(PMF_JUMP_HELD | PMF_DUCKED);
+		client->ps.pmove.pm_flags |= PMF_ON_GROUND;
+		client->ps.pmove.velocity = vec3_origin;
+		ent->velocity = vec3_origin;
+		client->ps.pmove.viewheight = ent->viewheight = 22;
+		return;
+	}
+
 	if (ent->client->chase_target)
 	{
 		client->resp.cmd_angles = ucmd->angles;
