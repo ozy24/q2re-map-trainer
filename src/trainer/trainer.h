@@ -269,5 +269,6 @@ bool MapTrainer_HandleSpawnTrainerBot(edict_t *bot);
 void MapTrainer_OnSpawnTrainerClientBegin(edict_t *ent);
 void MapTrainer_OnSpawnTrainerClientDisconnect(edict_t *ent);
 bool MapTrainer_IsSpawnTrainerBot(const edict_t *ent);
-void MapTrainer_OnSpawnTrainerRespawn(int32_t total_spawns, int32_t spawn_index);
+void MapTrainer_OnSpawnTrainerRespawn(edict_t *ent, int32_t total_spawns, int32_t spawn_index);
+void MapTrainer_OnSpawnTrainerPlaced(edict_t *ent);
 

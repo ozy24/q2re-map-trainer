@@ -35,10 +35,12 @@ void MapTrainer_PrimeBeacon()
 bool MapTrainer_SnapSpawnTrainerToGround(edict_t *bot)
 {
 	contents_t mask = G_GetClipMask(bot);
-	vec3_t end = bot->s.origin;
-	end[2] -= 256.0f;
+	vec3_t start = bot->s.origin;
+	start[2] += 2.0f;
+	vec3_t end = start;
+	end[2] -= 512.0f;
 
-	trace_t tr = gi.trace(bot->s.origin, bot->mins, bot->maxs, end, bot, mask);
+	trace_t tr = gi.trace(start, bot->mins, bot->maxs, end, bot, mask);
 	if (tr.fraction >= 1.0f)
 		return false;
 
@@ -218,19 +220,25 @@ bool MapTrainer_IsSpawnTrainerBot(const edict_t *ent)
 	return MapTrainer_IsSpawnTrainerClient(ent);
 }
 
-void MapTrainer_OnSpawnTrainerRespawn(int32_t total_spawns, int32_t spawn_index)
+void MapTrainer_OnSpawnTrainerRespawn(edict_t *ent, int32_t total_spawns, int32_t spawn_index)
 {
-	if (!level.map_trainer.spawn_trainer_enabled)
+	if (!MapTrainer_IsSpawnTrainerClient(ent))
 		return;
 
 	level.map_trainer.spawn_trainer_total_spawns = total_spawns;
 	level.map_trainer.spawn_trainer_last_spawn_index = spawn_index;
-	if (level.map_trainer.spawn_trainer_bot && level.map_trainer.spawn_trainer_bot->inuse)
-		MapTrainer_SnapSpawnTrainerToGround(level.map_trainer.spawn_trainer_bot);
 	if (level.map_trainer.spawn_trainer_beacon_enabled)
 		MapTrainer_ResetBeaconTimer(SPAWN_TRAINER_BEACON_INITIAL_DELAY);
 	else
 		level.map_trainer.spawn_trainer_next_beep_time = gtime_t();
+}
+
+void MapTrainer_OnSpawnTrainerPlaced(edict_t *ent)
+{
+	if (!MapTrainer_IsSpawnTrainerClient(ent))
+		return;
+
+	MapTrainer_SnapSpawnTrainerToGround(ent);
 }
 
 // Per-frame trainer tick. Handles deferred spawn-trainer auto-resume after a map change:

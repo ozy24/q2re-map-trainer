@@ -1509,12 +1509,14 @@ bool SelectSpawnPoint(edict_t *ent, vec3_t &origin, vec3_t &angles, bool force_s
 			spot = result.spot;
 
 			if (spot && MapTrainer_IsSpawnTrainerBot(ent))
-				MapTrainer_OnSpawnTrainerRespawn(result.total_spawn_points, result.selected_spawn_index);
+				MapTrainer_OnSpawnTrainerRespawn(ent, result.total_spawn_points, result.selected_spawn_index);
 		}
 
 		if (spot)
 		{
-			origin = spot->s.origin + vec3_t{ 0, 0, 9 };
+			origin = spot->s.origin;
+			if (!MapTrainer_IsSpawnTrainerBot(ent))
+				origin[2] += 9;
 			angles = spot->s.angles;
 
 			return true;
@@ -2014,7 +2016,7 @@ inline void PutClientOnSpawnPoint(edict_t *ent, const vec3_t &spawn_origin, cons
 	client->ps.pmove.origin = spawn_origin;
 
 	ent->s.origin = spawn_origin;
-	if (!use_squad_respawn)
+	if (!use_squad_respawn && !MapTrainer_IsSpawnTrainerBot(ent))
 		ent->s.origin[2] += 1; // make sure off ground
 	ent->s.old_origin = ent->s.origin;
 
@@ -2343,6 +2345,9 @@ void PutClientInServer(edict_t *ent)
 	if (!KillBox(ent, true, MOD_TELEFRAG_SPAWN))
 	{ // could't spawn in?
 	}
+
+	// Map Trainer: snap spawn marker bot to floor (skips normal pmove fall)
+	MapTrainer_OnSpawnTrainerPlaced(ent);
 
 	// my tribute to cash's level-specific hacks. I hope I live
 	// up to his trailblazing cheese.
