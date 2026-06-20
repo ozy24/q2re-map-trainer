@@ -48,13 +48,14 @@ If the slot frees up later, the bot won't come back even though intent is still 
 - **Fix:** only clear `resume_pending` on success; on failure leave it pending (optionally with a
   short retry backoff) so it re-arms once a slot is available.
 
-### 5. Item-availability scan is O(entities) per call **[Confirmed]** — *low/medium effort*
-`MapTrainer_IsItemAvailable` walks every entity via `G_FindByString` on each call, and
-`MapTrainer_PickNewTarget` calls it in nested loops over unique types × instances. On item-dense maps
-this is repeated full-entity scans per target pick.
-- **Fix:** cache the item→edict mapping when building the item list (store the `edict_t*` or entity
-  index in `map_trainer_item_t`) and check `SVF_RESPAWNING`/`solid` directly. Removes the string
-  search entirely.
+### 5. Item-availability scan is O(entities) per call **[Addressed]**
+`map_trainer_item_t` caches the map `edict_t*` at build time; `MapTrainer_IsItemAvailable(item_index)`
+checks `SVF_RESPAWNING`/`solid` directly with no `G_FindByString` scan.
+
+### 8. Item classification is string-prefix matching **[Addressed]**
+`MapTrainer_IsItemCategoryEnabledForItem` uses `ent->item->flags` (`IF_WEAPON`, `IF_AMMO`, etc.) with
+classname fallback for virtual/combined classes and mod items. Armor names unified across both
+`item_armor_*` and `item_*_armor` conventions.
 
 ---
 
@@ -72,13 +73,6 @@ Update functions index entries by literal position (`entries[7]` for the speedom
 `entries[2..8]` for categories, etc.). Re-ordering a menu silently breaks the wrong row.
 - **Fix:** name the indices via an `enum`/`constexpr`, or look entries up by a stable id rather than
   position.
-
-### 8. Item classification is string-prefix matching **[Confirmed]** — *medium effort*
-`MapTrainer_IsItemCategoryEnabled` decides weapon/ammo/health/armor/powerup by `strstr`/`Q_strcasecmp`
-on classnames, with several special cases (`item_quad` treated as weapon, hand-listed armor names).
-Custom/mod items or renamed entities fall through to "powerups" or "enabled by default".
-- **Fix:** drive categorization from the SDK's item registry (`ent->item->flags` / item id) instead of
-  classname strings where possible; keep the string table only as a fallback.
 
 ### 9. Magic numbers scattered through the trainers **[Confirmed]** — *low effort*
 Pickup radius (64), position-match tolerance (32), timing grace period (5s), bhop timeout (30 frames),
@@ -144,6 +138,8 @@ sure the prompt always appears and a target is always reachable.
 - **#9 magic numbers** → `trainer_config.h`.
 - **#1 single-practitioner assumption** → README "Design and limitations".
 - **#3 frame-rate-independent bhop timing** → `bhop_landing_time` + `gtime_t` thresholds (`trainer_jump.cpp`).
+- **#5 item edict cache** → `map_trainer_item_t::ent`, direct availability check (`trainer_path.cpp`).
+- **#8 item flags classification** → `MapTrainer_IsItemCategoryEnabledForItem` (`trainer_core.cpp`).
 
 ---
 
@@ -153,7 +149,7 @@ sure the prompt always appears and a target is always reachable.
 2. ~~#6 mode enum + #9 magic-number hoist~~ — done.
 3. ~~#2 restart persistence (cvars)~~ — done; savegame half optional.
 4. ~~**#3** frame-rate-independent bhop timing~~ — done.
-5. **#5** item-availability caching (perf) and **#8** item classification (robustness).
+5. ~~**#5** item-availability caching~~ and ~~**#8** item classification~~ — done.
 6. Longer term: **#13** automated tests; **#7** menu index enums; polish items **#11–#15**.
 
 > Note: #1 (per-client state) is intentionally **not** on this list — global state is by design for

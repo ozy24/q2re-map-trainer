@@ -10,6 +10,7 @@
 struct edict_t;
 struct pmenuhnd_t;
 struct pmove_t;
+struct gitem_t;
 
 // ==================== DATA STRUCTURES ====================
 
@@ -36,6 +37,7 @@ struct map_trainer_item_t
 	char friendly_name[64];
 	char class_name[64];
 	vec3_t position;
+	edict_t *ent; // cached map entity; availability checked directly (no G_FindByString)
 };
 
 struct map_trainer_unique_item_t
@@ -173,12 +175,13 @@ void MapTrainer_BuildUniqueItemsList();
 
 // Category and filtering
 bool MapTrainer_IsItemCategoryEnabled(const char *class_name);
+bool MapTrainer_IsItemCategoryEnabledForItem(const gitem_t *item);
 bool MapTrainer_IsCombinableHealthPack(const char *class_name);
 const char* MapTrainer_GetNormalizedClassName(const char *class_name);
 const char* MapTrainer_GetDisplayFriendlyName(const char *class_name, const char *original_friendly_name);
 
 // Target management
-bool MapTrainer_IsItemAvailable(const char *class_name, const vec3_t &position);
+bool MapTrainer_IsItemAvailable(int32_t item_index);
 void MapTrainer_PickNewTarget();
 bool MapTrainer_IsTargetItem(edict_t *ent);
 void MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player);

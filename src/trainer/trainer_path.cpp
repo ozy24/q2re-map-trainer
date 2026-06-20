@@ -7,28 +7,16 @@
 
 // ==================== PATH TRAINING FEATURE ====================
 
-// Check if an item entity is available (not respawning)
-bool MapTrainer_IsItemAvailable(const char *class_name, const vec3_t &position)
+bool MapTrainer_IsItemAvailable(int32_t item_index)
 {
-	// Find all entities with matching classname and check if any are available
-	edict_t *ent = nullptr;
-	while ((ent = G_FindByString<&edict_t::classname>(ent, class_name)) != nullptr)
-	{
-		vec3_t diff = ent->s.origin - position;
-		float distance = diff.length();
-		
-		// Check if this entity is at the expected position (tight tolerance since items don't move)
-		if (distance < trainer_config::PATH_ITEM_POSITION_EPSILON)
-		{
-			// Check if this item is available (not respawning)
-			if (!(ent->svflags & SVF_RESPAWNING) && ent->solid != SOLID_NOT)
-			{
-				return true; // Found an available instance
-			}
-		}
-	}
-	
-	return false; // No available instances found
+	if (!level.map_trainer.items || item_index < 0 || item_index >= level.map_trainer.item_count)
+		return false;
+
+	edict_t *ent = level.map_trainer.items[item_index].ent;
+	if (!ent || !ent->inuse)
+		return false;
+
+	return !(ent->svflags & SVF_RESPAWNING) && ent->solid != SOLID_NOT;
 }
 
 void MapTrainer_PickNewTarget()
@@ -67,10 +55,8 @@ void MapTrainer_PickNewTarget()
 		bool has_available_instance = false;
 		for (int32_t j = 0; j < unique_item->instance_count; j++)
 		{
-			int32_t item_index = unique_item->item_indices[j];
-			map_trainer_item_t *item = &level.map_trainer.items[item_index];
-			
-			if (MapTrainer_IsItemAvailable(item->class_name, item->position))
+			const int32_t item_index = unique_item->item_indices[j];
+			if (MapTrainer_IsItemAvailable(item_index))
 			{
 				has_available_instance = true;
 				break;
@@ -106,13 +92,9 @@ void MapTrainer_PickNewTarget()
 	std::vector<int32_t> available_instances;
 	for (int32_t j = 0; j < unique_item->instance_count; j++)
 	{
-		int32_t item_index = unique_item->item_indices[j];
-		map_trainer_item_t *item = &level.map_trainer.items[item_index];
-		
-		if (MapTrainer_IsItemAvailable(item->class_name, item->position))
-		{
+		const int32_t item_index = unique_item->item_indices[j];
+		if (MapTrainer_IsItemAvailable(item_index))
 			available_instances.push_back(item_index);
-		}
 	}
 	
 	if (available_instances.empty())
@@ -164,6 +146,10 @@ bool MapTrainer_IsTargetItem(edict_t *ent)
 		
 	map_trainer_item_t *target = &level.map_trainer.items[level.map_trainer.current_target_index];
 	
+	// Prefer exact entity match when the cached edict is still valid
+	if (target->ent && target->ent->inuse && ent == target->ent)
+		return true;
+
 	// Get normalized class names for comparison (handles health pack combining)
 	const char *ent_normalized = MapTrainer_GetNormalizedClassName(ent->item->classname);
 	const char *target_normalized = MapTrainer_GetNormalizedClassName(target->class_name);
@@ -245,4 +231,3 @@ void MapTrainer_ShowWelcomeMessage(edict_t *player)
 		gi.LocClient_Print(player, PRINT_CENTER, "Welcome to the Q2RE Map Trainer.\nPress Tab to open the training menu.");
 	}
 }
-

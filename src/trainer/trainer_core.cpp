@@ -282,51 +282,87 @@ const char* MapTrainer_GetDisplayFriendlyName(const char *class_name, const char
 	return original_friendly_name;
 }
 
-// Determine what category an item belongs to based on its class name
-bool MapTrainer_IsItemCategoryEnabled(const char *class_name)
+// ==================== CATEGORY MANAGEMENT ====================
+
+static bool MapTrainer_IsItemCategoryEnabledByClassName(const char *class_name)
 {
+	if (!class_name || !*class_name)
+		return true;
+
+	// Virtual class from combine-health-packs mode
+	if (Q_strcasecmp(class_name, "item_health_combined") == 0)
+		return level.map_trainer.health_enabled;
+
 	// Weapons
 	if (strstr(class_name, "weapon_") == class_name ||
-		Q_strcasecmp(class_name, "item_quad") == 0) // Quad damage is a weapon powerup but treat as weapon
+		Q_strcasecmp(class_name, "item_quad") == 0)
 	{
 		return level.map_trainer.weapons_enabled;
 	}
-	
+
 	// Ammo
 	if (strstr(class_name, "ammo_") == class_name)
-	{
 		return level.map_trainer.ammo_enabled;
-	}
-	
-	// Health items (including combined health pack virtual class)
+
+	// Health items
 	if (strstr(class_name, "item_health") == class_name ||
 		Q_strcasecmp(class_name, "item_health_small") == 0 ||
 		Q_strcasecmp(class_name, "item_health_large") == 0 ||
-		Q_strcasecmp(class_name, "item_health_mega") == 0 ||
-		Q_strcasecmp(class_name, "item_health_combined") == 0)
+		Q_strcasecmp(class_name, "item_health_mega") == 0)
 	{
 		return level.map_trainer.health_enabled;
 	}
-	
-	// Armor items
+
+	// Armor items (both naming conventions)
 	if (strstr(class_name, "item_armor") == class_name ||
 		Q_strcasecmp(class_name, "item_jacket_armor") == 0 ||
 		Q_strcasecmp(class_name, "item_combat_armor") == 0 ||
 		Q_strcasecmp(class_name, "item_body_armor") == 0 ||
+		Q_strcasecmp(class_name, "item_armor_jacket") == 0 ||
+		Q_strcasecmp(class_name, "item_armor_combat") == 0 ||
+		Q_strcasecmp(class_name, "item_armor_body") == 0 ||
 		Q_strcasecmp(class_name, "item_power_screen") == 0 ||
 		Q_strcasecmp(class_name, "item_power_shield") == 0)
 	{
 		return level.map_trainer.armor_enabled;
 	}
-	
-	// Powerups (everything else)
+
+	// Powerups (remaining item_*)
 	if (strstr(class_name, "item_") == class_name)
-	{
 		return level.map_trainer.powerups_enabled;
-	}
-	
-	// Default to enabled for unknown items
+
 	return true;
+}
+
+bool MapTrainer_IsItemCategoryEnabledForItem(const gitem_t *item)
+{
+	if (!item)
+		return true;
+
+	if (item->classname && Q_strcasecmp(item->classname, "item_quad") == 0)
+		return level.map_trainer.weapons_enabled;
+
+	const item_flags_t flags = item->flags;
+	if (flags & IF_WEAPON)
+		return level.map_trainer.weapons_enabled;
+	if (flags & IF_AMMO)
+		return level.map_trainer.ammo_enabled;
+	if (flags & IF_HEALTH)
+		return level.map_trainer.health_enabled;
+	if (flags & IF_ARMOR)
+		return level.map_trainer.armor_enabled;
+	if (flags & IF_POWERUP)
+		return level.map_trainer.powerups_enabled;
+
+	if (item->classname)
+		return MapTrainer_IsItemCategoryEnabledByClassName(item->classname);
+
+	return true;
+}
+
+bool MapTrainer_IsItemCategoryEnabled(const char *class_name)
+{
+	return MapTrainer_IsItemCategoryEnabledByClassName(class_name);
 }
 
 // ==================== ITEM LIST BUILDING ====================
@@ -353,9 +389,8 @@ void MapTrainer_BuildItemList(const char *mapname)
 		if (Q_strcasecmp(ent->classname, "noclass") == 0 || Q_strcasecmp(ent->classname, "freed") == 0)
 			continue;
 
-		// Only include actual items (entities with an item field)
-		// Only include items that are in the enabled categories
-		if (!MapTrainer_IsItemCategoryEnabled(ent->classname))
+		// Only include items in enabled categories (item registry flags, classname fallback)
+		if (!MapTrainer_IsItemCategoryEnabledForItem(ent->item))
 			continue;
 
 		// Get friendly name from the actual item definition that the game uses
@@ -365,10 +400,11 @@ void MapTrainer_BuildItemList(const char *mapname)
 		else
 			Q_strlcpy(friendly_name, ent->classname, sizeof(friendly_name));
 
-		map_trainer_item_t item;
+		map_trainer_item_t item = {};
 		Q_strlcpy(item.friendly_name, friendly_name, sizeof(item.friendly_name));
 		Q_strlcpy(item.class_name, ent->classname, sizeof(item.class_name));
 		item.position = ent->s.origin;
+		item.ent = ent;
 
 		temp_items.push_back(item);
 	}
