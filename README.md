@@ -50,22 +50,31 @@ Learn spawn point locations and practice spawn awareness.
 
 ## 📥 Installation
 
-1. **Download** `game_x64.dll` from the latest release
-2. **Copy** it to your Quake 2 baseq2 folder:
+1. **Download** the latest release zip from [GitHub Releases](https://github.com/ozy24/q2re-map-trainer/releases) (e.g. `q2re_map_trainer_v1.2.1.zip`)
+2. **Extract** the zip — it contains a `maptrain` folder with `game_x64.dll`
+3. **Copy** the `maptrain` folder into your Quake 2 `baseq2` directory:
    ```
-   <Steam>\steamapps\common\Quake 2\rerelease\baseq2\
+   <Steam>\steamapps\common\Quake 2\rerelease\baseq2\maptrain\
    ```
    Example:
    ```
-   C:\Program Files (x86)\Steam\steamapps\common\Quake 2\rerelease\baseq2\game_x64.dll
+   C:\Program Files (x86)\Steam\steamapps\common\Quake 2\rerelease\baseq2\maptrain\game_x64.dll
    ```
-3. **Launch** Quake 2 Rerelease
+4. **Launch** Quake 2 Rerelease
+5. Open the console (`~`) and type:
+   ```
+   game maptrain
+   ```
+6. Load a deathmatch map (e.g. `map q2dm1`)
 
-**That's it!** The trainer is now active.
+**That's it!** The trainer mod is now active.
 
 ---
 
 ## 🎮 Quick Start
+
+### Activate the mod
+After installation, run `game maptrain` in the console before loading a map.
 
 ### Opening the Menu
 Press **TAB** to open the trainer menu (or type `maptrainer` in console).
@@ -220,6 +229,7 @@ Works with:
 ## 🐛 Troubleshooting
 
 ### Menu won't open
+- Make sure you ran `game maptrain` in the console after launching
 - Make sure you're in a multiplayer map (deathmatch mode)
 - Try typing `maptrainer` in the console instead of TAB
 

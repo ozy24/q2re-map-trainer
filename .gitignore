@@ -84,6 +84,8 @@ dist/*.dll
 dist/*.lib
 dist/*.exp
 dist/*.pdb
+dist/*.zip
+dist/_zip_inspect/
 
 # ------------------------------
 # Game-specific compiled files
