@@ -3,10 +3,7 @@
 
 #include "../g_local.h"
 #include "trainer.h"
-
-// ==================== VERSION ====================
-
-#define TRAINER_VERSION "v1.0.0 by ozy"
+#include "trainer_version.h"
 
 // ==================== MENU SYSTEM ====================
 
@@ -35,6 +32,7 @@ void MapTrainer_ToggleWeapons(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.weapons_enabled = !level.map_trainer.weapons_enabled;
 	MapTrainer_RestartPathTraining();
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -42,6 +40,7 @@ void MapTrainer_ToggleAmmo(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.ammo_enabled = !level.map_trainer.ammo_enabled;
 	MapTrainer_RestartPathTraining();
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -49,6 +48,7 @@ void MapTrainer_ToggleHealth(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.health_enabled = !level.map_trainer.health_enabled;
 	MapTrainer_RestartPathTraining();
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -56,6 +56,7 @@ void MapTrainer_ToggleArmor(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.armor_enabled = !level.map_trainer.armor_enabled;
 	MapTrainer_RestartPathTraining();
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -63,12 +64,14 @@ void MapTrainer_TogglePowerups(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.powerups_enabled = !level.map_trainer.powerups_enabled;
 	MapTrainer_RestartPathTraining();
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
 void MapTrainer_ToggleSpeedometer(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.speedometer_enabled = !level.map_trainer.speedometer_enabled;
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -123,7 +126,8 @@ void MapTrainer_ToggleTraining(edict_t *ent, pmenuhnd_t *p)
 		
 		gi.LocClient_Print(ent, PRINT_HIGH, "Item Path Trainer disabled.");
 	}
-	
+
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -131,6 +135,7 @@ void MapTrainer_ToggleCombineHealthPacks(edict_t *ent, pmenuhnd_t *p)
 {
 	level.map_trainer.combine_health_packs = !level.map_trainer.combine_health_packs;
 	MapTrainer_RestartPathTraining();
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -197,7 +202,7 @@ pmenu_t maptrainer_itempathing_submenu[] = {
 	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
-	{ TRAINER_VERSION, PMENU_ALIGN_CENTER, nullptr }
+	{ TRAINER_VERSION_DISPLAY, PMENU_ALIGN_CENTER, nullptr }
 };
 
 void MapTrainer_OpenItemPathingSubmenu(edict_t *ent, pmenuhnd_t *p)
@@ -242,7 +247,8 @@ void MapTrainer_ToggleTiming(edict_t *ent, pmenuhnd_t *p)
 		}
 		level.map_trainer.timing_entry_count = 0;
 	}
-	
+
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -258,7 +264,8 @@ void MapTrainer_ToggleFreeCollect(edict_t *ent, pmenuhnd_t *p)
 	{
 		gi.LocClient_Print(ent, PRINT_HIGH, "Free Collect disabled.");
 	}
-	
+
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -274,7 +281,8 @@ void MapTrainer_ToggleTimingDebug(edict_t *ent, pmenuhnd_t *p)
 	{
 		gi.LocClient_Print(ent, PRINT_HIGH, "Timing Debug disabled.");
 	}
-	
+
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -290,7 +298,8 @@ void MapTrainer_ToggleMajorItemsOnly(edict_t *ent, pmenuhnd_t *p)
 	{
 		gi.LocClient_Print(ent, PRINT_HIGH, "Tracking: All items");
 	}
-	
+
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -320,7 +329,8 @@ void MapTrainer_ToggleTimingChallenge(edict_t *ent, pmenuhnd_t *p)
 			gi.LocClient_Print(ent, PRINT_HIGH, "Timing Challenge: PRO (±1 second)");
 			break;
 	}
-	
+
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -366,7 +376,7 @@ pmenu_t maptrainer_itemtiming_submenu[] = {
 	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
-	{ TRAINER_VERSION, PMENU_ALIGN_CENTER, nullptr }
+	{ TRAINER_VERSION_DISPLAY, PMENU_ALIGN_CENTER, nullptr }
 };
 
 void MapTrainer_OpenItemTimingSubmenu(edict_t *ent, pmenuhnd_t *p)
@@ -394,6 +404,7 @@ void MapTrainer_ToggleBhopTrainer(edict_t *ent, pmenuhnd_t *p)
 {
     level.map_trainer.bhop_enabled = !level.map_trainer.bhop_enabled;
     gi.LocClient_Print(ent, PRINT_HIGH, "Bhop trainer {}", level.map_trainer.bhop_enabled ? "enabled" : "disabled");
+    MapTrainer_SaveConfig();
     PMenu_Update(ent);
 }
 
@@ -421,7 +432,7 @@ pmenu_t maptrainer_jumptrainer_submenu[] = {
 	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
-	{ TRAINER_VERSION, PMENU_ALIGN_CENTER, nullptr }
+	{ TRAINER_VERSION_DISPLAY, PMENU_ALIGN_CENTER, nullptr }
 };
 
 void MapTrainer_OpenJumpTrainerSubmenu(edict_t *ent, pmenuhnd_t *p)
@@ -436,16 +447,19 @@ void MapTrainer_ToggleSpawnTrainer(edict_t *ent, pmenuhnd_t *p)
 	if (level.map_trainer.spawn_trainer_enabled)
 	{
 		MapTrainer_DisableSpawnTrainer();
+		level.map_trainer.spawn_trainer_intent = false;
 		gi.LocClient_Print(ent, PRINT_HIGH, "Spawn Trainer disabled.");
 	}
 	else
 	{
+		level.map_trainer.spawn_trainer_intent = true;
 		if (MapTrainer_EnableSpawnTrainer(ent))
 			gi.LocClient_Print(ent, PRINT_HIGH, "Spawn Trainer enabled.");
 		else
 			gi.LocClient_Print(ent, PRINT_HIGH, "Spawn Trainer could not be enabled.");
 	}
 
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -454,6 +468,7 @@ void MapTrainer_ToggleSpawnTrainerOrder(edict_t *ent, pmenuhnd_t *p)
 	level.map_trainer.spawn_trainer_true_random = !level.map_trainer.spawn_trainer_true_random;
 	const char *mode = level.map_trainer.spawn_trainer_true_random ? "Random (No Repeat)" : "Vanilla";
 	gi.LocClient_Print(ent, PRINT_HIGH, G_Fmt("Spawn order: {}", mode).data());
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -468,6 +483,7 @@ void MapTrainer_ToggleSpawnTrainerBeacon(edict_t *ent, pmenuhnd_t *p)
 
 	const char *mode = level.map_trainer.spawn_trainer_beacon_enabled ? "ON" : "OFF";
 	gi.LocClient_Print(ent, PRINT_HIGH, G_Fmt("Spawn Trainer beacon: {}", mode).data());
+	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -493,7 +509,7 @@ pmenu_t maptrainer_spawntrainer_submenu[] = {
 	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
-	{ TRAINER_VERSION, PMENU_ALIGN_CENTER, nullptr }
+	{ TRAINER_VERSION_DISPLAY, PMENU_ALIGN_CENTER, nullptr }
 };
 
 void MapTrainer_OpenSpawnTrainerSubmenu(edict_t *ent, pmenuhnd_t *p)
@@ -537,7 +553,7 @@ pmenu_t maptrainer_menu[] = {
 	{ "Close Menu", PMENU_ALIGN_LEFT, MapTrainer_MenuClose },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
-	{ TRAINER_VERSION, PMENU_ALIGN_CENTER, nullptr }
+	{ TRAINER_VERSION_DISPLAY, PMENU_ALIGN_CENTER, nullptr }
 	
 };
 

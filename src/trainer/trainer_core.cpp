@@ -68,6 +68,80 @@ void MapTrainer_Init()
 		level.map_trainer.timing_entries[i].item_name = nullptr;
 		level.map_trainer.timing_entries[i].item_classname = nullptr;
 	}
+
+	// Spawn trainer auto-resume defaults (overwritten by LoadConfig below if persisted)
+	level.map_trainer.spawn_trainer_intent = false;
+	level.map_trainer.spawn_trainer_resume_pending = false;
+
+	// Overlay any settings the player configured on previous maps
+	MapTrainer_LoadConfig();
+
+	// Re-establish per-map runtime state from the (possibly restored) config.
+	// Item arrays were freed with TAG_LEVEL before this runs and items is now nullptr,
+	// so BuildItemList rebuilds cleanly for the new map.
+	if (level.map_trainer.training_enabled)
+	{
+		MapTrainer_BuildItemList(level.mapname);
+		level.map_trainer.first_pickup = true;
+		level.map_trainer.current_target_index = -1;
+		level.map_trainer.previous_target_index = -1;
+	}
+
+	// Defer spawn-trainer bot re-creation to a server frame (ClientConnect is unsafe
+	// during SpawnEntities). MapTrainer_RunFrame() picks this up once a human is in-game.
+	level.map_trainer.spawn_trainer_resume_pending = level.map_trainer.spawn_trainer_intent;
+}
+
+// ==================== CONFIG PERSISTENCE ====================
+// Mirror the trainer's configuration fields between the per-map level.map_trainer and the
+// cross-map game.map_trainer_config so settings survive map changes (see plan / trainer.h).
+
+void MapTrainer_SaveConfig()
+{
+	map_trainer_config_t &cfg = game.map_trainer_config;
+	cfg.weapons_enabled = level.map_trainer.weapons_enabled;
+	cfg.ammo_enabled = level.map_trainer.ammo_enabled;
+	cfg.health_enabled = level.map_trainer.health_enabled;
+	cfg.armor_enabled = level.map_trainer.armor_enabled;
+	cfg.powerups_enabled = level.map_trainer.powerups_enabled;
+	cfg.speedometer_enabled = level.map_trainer.speedometer_enabled;
+	cfg.training_enabled = level.map_trainer.training_enabled;
+	cfg.combine_health_packs = level.map_trainer.combine_health_packs;
+	cfg.timing_enabled = level.map_trainer.timing_enabled;
+	cfg.free_collect_enabled = level.map_trainer.free_collect_enabled;
+	cfg.timing_debug_enabled = level.map_trainer.timing_debug_enabled;
+	cfg.timing_major_items_only = level.map_trainer.timing_major_items_only;
+	cfg.timing_challenge_mode = level.map_trainer.timing_challenge_mode;
+	cfg.bhop_enabled = level.map_trainer.bhop_enabled;
+	cfg.spawn_trainer_true_random = level.map_trainer.spawn_trainer_true_random;
+	cfg.spawn_trainer_beacon_enabled = level.map_trainer.spawn_trainer_beacon_enabled;
+	cfg.spawn_trainer_intent = level.map_trainer.spawn_trainer_intent;
+	cfg.valid = true;
+}
+
+void MapTrainer_LoadConfig()
+{
+	const map_trainer_config_t &cfg = game.map_trainer_config;
+	if (!cfg.valid)
+		return; // nothing persisted yet; keep hardcoded defaults
+
+	level.map_trainer.weapons_enabled = cfg.weapons_enabled;
+	level.map_trainer.ammo_enabled = cfg.ammo_enabled;
+	level.map_trainer.health_enabled = cfg.health_enabled;
+	level.map_trainer.armor_enabled = cfg.armor_enabled;
+	level.map_trainer.powerups_enabled = cfg.powerups_enabled;
+	level.map_trainer.speedometer_enabled = cfg.speedometer_enabled;
+	level.map_trainer.training_enabled = cfg.training_enabled;
+	level.map_trainer.combine_health_packs = cfg.combine_health_packs;
+	level.map_trainer.timing_enabled = cfg.timing_enabled;
+	level.map_trainer.free_collect_enabled = cfg.free_collect_enabled;
+	level.map_trainer.timing_debug_enabled = cfg.timing_debug_enabled;
+	level.map_trainer.timing_major_items_only = cfg.timing_major_items_only;
+	level.map_trainer.timing_challenge_mode = cfg.timing_challenge_mode;
+	level.map_trainer.bhop_enabled = cfg.bhop_enabled;
+	level.map_trainer.spawn_trainer_true_random = cfg.spawn_trainer_true_random;
+	level.map_trainer.spawn_trainer_beacon_enabled = cfg.spawn_trainer_beacon_enabled;
+	level.map_trainer.spawn_trainer_intent = cfg.spawn_trainer_intent;
 }
 
 // ==================== UTILITY FUNCTIONS ====================

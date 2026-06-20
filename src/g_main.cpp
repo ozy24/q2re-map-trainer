@@ -986,6 +986,9 @@ inline void G_RunFrame_(bool main_loop)
 	// build the playerstate_t structures for all players
 	ClientEndServerFrames();
 
+	// [Map Trainer] deferred spawn-trainer auto-resume after map change
+	MapTrainer_RunFrame();
+
 	// [Paril-KEX] if not in intermission and player 1 is loaded in
 	// the game as an entity, increase timer on current entry
 	if (level.entry && !level.intermissiontime && g_edicts[1].inuse && g_edicts[1].client->pers.connected)

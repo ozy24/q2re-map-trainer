@@ -241,7 +241,7 @@ Shows detailed debug information about timing calculations. Use this if you want
 ## 🙏 Credits
 
 **Created by**: ozy  
-**Version**: v0.94 beta  
+**Version**: v1.1.0  
 **Architecture**: "Thin vanilla" design - minimal changes to base game code  
 
 Built with the Quake 2 Rerelease SDK  
@@ -250,6 +250,12 @@ Copyright (c) ZeniMax Media Inc.
 ---
 
 ## 📝 Changelog
+
+### v1.1.0 (2026-06-20)
+- **Settings now persist across map changes** — trainer configuration is retained when the map changes, and active trainers auto-resume on the new map (path training rebuilds the new map's item list, the spawn bot re-spawns, timings start fresh)
+- Build environment overhaul — vcpkg is now a git submodule with a `setup-vcpkg.ps1` bootstrap; `build.bat`/`play.bat` moved to the repo root (build and deploy are separate steps)
+- Consolidated version constants into `src/trainer/trainer_version.h` (single source of truth, alongside the repo-root `VERSION` file)
+- Version bump to 1.1.0
 
 ### v0.94 beta
 - Various bug and stability fixes

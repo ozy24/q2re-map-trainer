@@ -107,12 +107,44 @@ struct map_trainer_t
 	static constexpr int32_t MAX_TIMING_ENTRIES = 32; // Support up to 32 concurrent timings
 	timing_entry_t timing_entries[MAX_TIMING_ENTRIES];
 	int32_t timing_entry_count;
+	// Spawn trainer auto-resume across map changes
+	bool spawn_trainer_intent;          // mirrored config: user wants spawn trainer enabled
+	bool spawn_trainer_resume_pending;  // runtime: re-spawn bot on this map once a human is in-game
+};
+
+// Persistent (cross-map) copy of the trainer's CONFIG fields. Lives in game_locals_t,
+// which survives map changes; mirrored into/out of level.map_trainer at load/save time.
+// Only configuration is persisted here - never runtime state (item lists, targets, live
+// timings, bot edicts), which is rebuilt per map.
+struct map_trainer_config_t
+{
+	bool valid; // false until first save; gates MapTrainer_LoadConfig
+	bool weapons_enabled, ammo_enabled, health_enabled, armor_enabled, powerups_enabled;
+	bool speedometer_enabled;
+	bool training_enabled;
+	bool combine_health_packs;
+	bool timing_enabled;
+	bool free_collect_enabled;
+	bool timing_debug_enabled;
+	bool timing_major_items_only;
+	timing_challenge_mode_t timing_challenge_mode;
+	bool bhop_enabled;
+	bool spawn_trainer_true_random;
+	bool spawn_trainer_beacon_enabled;
+	bool spawn_trainer_intent; // user wants spawn trainer (drives auto-resume)
 };
 
 // ==================== CORE API ====================
 
 // Initialization
 void MapTrainer_Init();
+
+// Config persistence across map changes
+void MapTrainer_SaveConfig(); // level.map_trainer -> game.map_trainer_config
+void MapTrainer_LoadConfig(); // game.map_trainer_config -> level.map_trainer
+
+// Per-frame trainer tick (deferred spawn-trainer auto-resume)
+void MapTrainer_RunFrame();
 
 // ==================== DEBUG API ====================
 

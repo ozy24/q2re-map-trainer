@@ -1113,6 +1113,9 @@ struct level_entry_t
 	int32_t visit_order;
 };
 
+// [Map Trainer] Data structures (incl. map_trainer_config_t persisted in game_locals_t below)
+#include "trainer/trainer.h"
+
 //
 // this structure is left intact through an entire game
 // it should be initialized at dll load time, and read/written to
@@ -1144,6 +1147,9 @@ struct game_locals_t
 	std::array<level_entry_t, MAX_LEVELS_PER_UNIT> level_entries;
 	int32_t max_lag_origins;
 	vec3_t *lag_origins; // maxclients * max_lag_origins
+
+	// [Map Trainer] persistent config, mirrored into level.map_trainer each map
+	map_trainer_config_t map_trainer_config;
 };
 
 constexpr size_t MAX_HEALTH_BARS = 2;
@@ -1151,9 +1157,7 @@ constexpr size_t MAX_HEALTH_BARS = 2;
 //
 // this structure is cleared as each map is entered
 // it is read/written to the level.sav file for savegames
-// [Map Trainer] Data structures defined in trainer/trainer.h
-#include "trainer/trainer.h"
-
+// [Map Trainer] Data structures defined in trainer/trainer.h (included above game_locals_t)
 //
 struct level_locals_t
 {

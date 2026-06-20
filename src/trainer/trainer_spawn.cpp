@@ -83,7 +83,8 @@ bool MapTrainer_EnableSpawnTrainer(edict_t *requester)
 	if (level.map_trainer.spawn_trainer_enabled && level.map_trainer.spawn_trainer_bot &&
 		level.map_trainer.spawn_trainer_bot->inuse)
 	{
-		gi.LocClient_Print(requester, PRINT_HIGH, "Spawn Trainer already enabled.");
+		if (requester)
+			gi.LocClient_Print(requester, PRINT_HIGH, "Spawn Trainer already enabled.");
 		return true;
 	}
 
@@ -93,14 +94,16 @@ bool MapTrainer_EnableSpawnTrainer(edict_t *requester)
 	edict_t *slot = ClientChooseSlot(userinfo, SPAWN_TRAINER_SOCIAL_ID, true, nullptr, 0, false);
 	if (!slot)
 	{
-		gi.LocClient_Print(requester, PRINT_HIGH, "No available client slot for Spawn Trainer.");
+		if (requester)
+			gi.LocClient_Print(requester, PRINT_HIGH, "No available client slot for Spawn Trainer.");
 		MapTrainer_ClearSpawnTrainerState();
 		return false;
 	}
 
 	if (!ClientConnect(slot, userinfo, SPAWN_TRAINER_SOCIAL_ID, true))
 	{
-		gi.LocClient_Print(requester, PRINT_HIGH, "Spawn Trainer bot failed to connect.");
+		if (requester)
+			gi.LocClient_Print(requester, PRINT_HIGH, "Spawn Trainer bot failed to connect.");
 		MapTrainer_ClearSpawnTrainerState();
 		return false;
 	}
@@ -211,5 +214,42 @@ void MapTrainer_OnSpawnTrainerRespawn(int32_t total_spawns, int32_t spawn_index)
 		MapTrainer_ResetBeaconTimer(SPAWN_TRAINER_BEACON_INITIAL_DELAY);
 	else
 		level.map_trainer.spawn_trainer_next_beep_time = gtime_t();
+}
+
+// Per-frame trainer tick. Handles deferred spawn-trainer auto-resume after a map change:
+// the bot can't be created during SpawnEntities (ClientConnect is unsafe there), so
+// MapTrainer_Init sets spawn_trainer_resume_pending and we create the bot here on a normal
+// server frame, once at least one human client is actually in the game.
+void MapTrainer_RunFrame()
+{
+	if (!level.map_trainer.spawn_trainer_resume_pending)
+		return;
+
+	// Already running? Nothing to resume.
+	if (level.map_trainer.spawn_trainer_enabled && level.map_trainer.spawn_trainer_bot &&
+		level.map_trainer.spawn_trainer_bot->inuse)
+	{
+		level.map_trainer.spawn_trainer_resume_pending = false;
+		return;
+	}
+
+	// Wait until a human player is in-game before spawning the bot.
+	bool human_present = false;
+	for (uint32_t i = 0; i < game.maxclients; i++)
+	{
+		edict_t *player = &g_edicts[1 + i];
+		if (player->inuse && player->client && !(player->svflags & SVF_BOT))
+		{
+			human_present = true;
+			break;
+		}
+	}
+
+	if (!human_present)
+		return; // keep pending until someone loads in
+
+	// Attempt the re-spawn once; clear the flag regardless of outcome to avoid per-frame retries.
+	level.map_trainer.spawn_trainer_resume_pending = false;
+	MapTrainer_EnableSpawnTrainer(nullptr);
 }
 

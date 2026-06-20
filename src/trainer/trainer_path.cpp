@@ -235,8 +235,9 @@ void MapTrainer_ShowWelcomeMessage(edict_t *player)
 	else if (level.map_trainer.training_enabled && !level.map_trainer.initialized)
 	{
 		gi.LocClient_Print(player, PRINT_CENTER, "No items found in map.\nTraining mode disabled.");
-		// Auto-disable training if items weren't found
+		// Auto-disable training if items weren't found (persist so it doesn't re-arm next map)
 		level.map_trainer.training_enabled = false;
+		MapTrainer_SaveConfig();
 	}
 	else
 	{
