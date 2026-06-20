@@ -27,10 +27,8 @@ constexpr float SPAWN_TRAINER_BEACON_INTERVAL_SEC = 2.0f;
 constexpr float SPAWN_TRAINER_BEACON_INITIAL_DELAY_SEC = 0.1f;
 constexpr float SPAWN_TRAINER_RESUME_RETRY_SEC = 1.0f;
 
-// Jump / bhop training (frame-based until Phase 3 time conversion)
-constexpr int32_t BHOP_CHAIN_TIMEOUT_FRAMES = 30;
-constexpr int32_t BHOP_PERFECT_MAX_FRAMES = 1;
-constexpr int32_t BHOP_DEBUG_LOG_INTERVAL_FRAMES = 10;
+// Jump / bhop training (time-based; perfect window = one server tick via gi.frame_time_ms)
+constexpr float BHOP_CHAIN_TIMEOUT_SEC = 1.0f;
 
 // Speedometer
 constexpr float SPEEDOMETER_MAX_DISPLAY = 32767.0f;

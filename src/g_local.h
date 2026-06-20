@@ -2909,7 +2909,7 @@ struct gclient_t
 	float killer_yaw; // when dead, look at killer
 
 	// Bhop trainer tracking (per-client)
-	int32_t bhop_grounded_frames_since_landing;
+	gtime_t bhop_landing_time;
 	bool    bhop_recently_landed;
 	bool    bhop_jump_held_on_landing;
 	bool    bhop_chain_active; // True when in an active bhop chain (excludes first jump)

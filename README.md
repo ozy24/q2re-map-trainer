@@ -128,8 +128,8 @@ Now you can:
    - **Bhop Consistency**: Get feedback on your bunny hop timing
 
 **Bhop Feedback:**
-- **"Perfect"**: Frame-perfect jump (0-1 frames after landing)
-- **"Late (Nf)"**: You jumped N frames too late
+- **"Perfect"**: Jump within one server tick after landing
+- **"Late (Nms)"**: You waited N milliseconds too long on the ground
 - **"Early/Held"**: You held jump too early
 
 **Tips:**
@@ -260,7 +260,7 @@ Shows detailed debug information about timing calculations. Use this if you want
 
 - **Timing Grace Period**: 5 seconds after pickup (prevents immediate re-timing)
 - **Pickup Radius**: 64 units (standard Q2 pickup range)
-- **Bhop Chain Timeout**: 30 frames (~1 second)
+- **Bhop Chain Timeout**: 1 second of standing still
 - **Position Match Tolerance**: 32 units (for item detection)
 - **Max Concurrent Timings**: 32 items
 

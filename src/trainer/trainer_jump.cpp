@@ -78,6 +78,23 @@ void Cmd_WarpSpawn_f(edict_t *ent)
 
 // ==================== BHOP CONSISTENCY TRACKING ====================
 
+namespace
+{
+constexpr gtime_t BHOP_CHAIN_TIMEOUT = gtime_t::from_sec(trainer_config::BHOP_CHAIN_TIMEOUT_SEC);
+
+gtime_t MapTrainer_BhopPerfectMax()
+{
+	return gtime_t::from_ms(std::max<int64_t>(gi.frame_time_ms, 1));
+}
+
+gtime_t MapTrainer_BhopGroundedDuration(const gclient_t *client)
+{
+	if (!client || !client->bhop_recently_landed)
+		return gtime_t();
+	return level.time - client->bhop_landing_time;
+}
+} // namespace
+
 void MapTrainer_UpdateBhopTracking(edict_t *player, pmove_t &pm)
 {
 	if (!player || !player->client)
@@ -89,73 +106,56 @@ void MapTrainer_UpdateBhopTracking(edict_t *player, pmove_t &pm)
 	
 	if (was_airborne && now_grounded)
 	{
-		// Player just landed - only track if chain is active or about to start
-		TrainerLog("BHOP", "LANDED: chain_active=%d, recently_landed=%d->1, frames=%d->0",
+		TrainerLog("BHOP", "LANDED: chain_active=%d, recently_landed=%d->1",
 			player->client->bhop_chain_active,
-			player->client->bhop_recently_landed,
-			player->client->bhop_grounded_frames_since_landing);
+			player->client->bhop_recently_landed);
 		
 		player->client->bhop_recently_landed = true;
-		player->client->bhop_grounded_frames_since_landing = 0;
+		player->client->bhop_landing_time = level.time;
 		player->client->bhop_jump_held_on_landing = !!(pm.cmd.buttons & BUTTON_JUMP) || !!(player->client->ps.pmove.pm_flags & PMF_JUMP_HELD);
 	}
 
-	// Only process timing if chain is active
 	if (player->client->bhop_chain_active)
 	{
-		// Count grounded frames after landing
-		if (player->client->bhop_recently_landed && now_grounded)
-		{
-			player->client->bhop_grounded_frames_since_landing++;
-			if (player->client->bhop_grounded_frames_since_landing % trainer_config::BHOP_DEBUG_LOG_INTERVAL_FRAMES == 0)
-			{
-			TrainerLog("BHOP", "FRAME_COUNT: chain_active=1, frames=%d",
-				player->client->bhop_grounded_frames_since_landing);
-			}
-		}
+		const gtime_t grounded_duration = MapTrainer_BhopGroundedDuration(player->client);
 
-		// End bhop chain if grounded too long (30 frames ≈ 1 second at 30fps, 0.5s at 60fps)
-		if (now_grounded && player->client->bhop_grounded_frames_since_landing > trainer_config::BHOP_CHAIN_TIMEOUT_FRAMES)
+		if (now_grounded && player->client->bhop_recently_landed && grounded_duration > BHOP_CHAIN_TIMEOUT)
 		{
-		TrainerLog("BHOP", "TIMEOUT: chain_active=1->0, frames=%d, resetting state",
-			player->client->bhop_grounded_frames_since_landing);
+			TrainerLog("BHOP", "TIMEOUT: chain_active=1->0, grounded_ms=%lld, resetting state",
+				static_cast<long long>(grounded_duration.milliseconds()));
 			
 			player->client->bhop_chain_active = false;
-			// Reset landing state to prevent stale data from affecting next chain
 			player->client->bhop_recently_landed = false;
-			player->client->bhop_grounded_frames_since_landing = 0;
+			player->client->bhop_landing_time = gtime_t();
 		}
 	}
 
-	// Classify when a jump actually happens
 	if (pm.jump_sound && !(pm.s.pm_flags & PMF_ON_LADDER))
 	{
-		bool perfect = player->client->bhop_recently_landed && player->client->bhop_grounded_frames_since_landing <= trainer_config::BHOP_PERFECT_MAX_FRAMES;
-		bool late = player->client->bhop_recently_landed && player->client->bhop_grounded_frames_since_landing > trainer_config::BHOP_PERFECT_MAX_FRAMES;
-		bool early_or_held = player->client->bhop_recently_landed && player->client->bhop_jump_held_on_landing && player->client->bhop_grounded_frames_since_landing <= trainer_config::BHOP_PERFECT_MAX_FRAMES;
+		const gtime_t grounded_duration = MapTrainer_BhopGroundedDuration(player->client);
+		const gtime_t perfect_max = MapTrainer_BhopPerfectMax();
+		const bool perfect = player->client->bhop_recently_landed && grounded_duration <= perfect_max;
+		const bool late = player->client->bhop_recently_landed && grounded_duration > perfect_max;
+		const bool early_or_held = player->client->bhop_recently_landed && player->client->bhop_jump_held_on_landing && grounded_duration <= perfect_max;
 
-	TrainerLog("BHOP", "JUMP: chain_active=%d, recently_landed=%d, frames=%d, perfect=%d, late=%d",
-		player->client->bhop_chain_active,
-		player->client->bhop_recently_landed,
-		player->client->bhop_grounded_frames_since_landing,
-		perfect, late);
+		TrainerLog("BHOP", "JUMP: chain_active=%d, recently_landed=%d, grounded_ms=%lld, perfect=%d, late=%d",
+			player->client->bhop_chain_active,
+			player->client->bhop_recently_landed,
+			static_cast<long long>(grounded_duration.milliseconds()),
+			perfect, late);
 
-		// Only track and show feedback if we're in an active bhop chain (not the first jump)
 		if (player->client->bhop_chain_active)
 		{
-			// Update rolling window (20 recent jumps)
 			const uint8_t window_size = (uint8_t) q_countof(player->client->bhop_result_window);
 			if (player->client->bhop_result_window_count < window_size)
 				player->client->bhop_result_window_count++;
 			player->client->bhop_result_window[player->client->bhop_result_window_index] = perfect;
 			player->client->bhop_result_window_index = (player->client->bhop_result_window_index + 1) % window_size;
 
-			// Simple feedback
 			if (perfect)
 			{
 				TrainerLog("BHOP", "  -> Feedback: Perfect");
 				gi.LocClient_Print(player, PRINT_HIGH, "Bhop: Perfect");
-				// Audible feedback for frame-perfect
 				gi.sound(player, CHAN_AUTO, gi.soundindex("misc/menu3.wav"), trainer_config::SOUND_VOLUME_FULL, ATTN_NONE, 0);
 			}
 			else if (early_or_held)
@@ -165,22 +165,20 @@ void MapTrainer_UpdateBhopTracking(edict_t *player, pmove_t &pm)
 			}
 			else if (late)
 			{
-				TrainerLog("BHOP", "  -> Feedback: Late (%df)", player->client->bhop_grounded_frames_since_landing);
-				gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("Bhop: Late ({}f)", player->client->bhop_grounded_frames_since_landing).data());
+				const int64_t late_ms = grounded_duration.milliseconds();
+				TrainerLog("BHOP", "  -> Feedback: Late (%lldms)", static_cast<long long>(late_ms));
+				gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("Bhop: Late ({}ms)", late_ms).data());
 			}
 		}
 		else
 		{
-		// First jump - start the chain but don't count it
-		TrainerLog("BHOP", "  -> Starting chain (no feedback)");
-		player->client->bhop_chain_active = true;
-	}
+			TrainerLog("BHOP", "  -> Starting chain (no feedback)");
+			player->client->bhop_chain_active = true;
+		}
 
-	// Reset landing state after jump
-	TrainerLog("BHOP", "  -> Reset: recently_landed=0, frames=0");
+		TrainerLog("BHOP", "  -> Reset landing state");
 		player->client->bhop_recently_landed = false;
-		player->client->bhop_grounded_frames_since_landing = 0;
+		player->client->bhop_landing_time = gtime_t();
 		player->client->bhop_jump_held_on_landing = false;
 	}
 }
-
