@@ -268,6 +268,7 @@ void InitGame()
 
 	// [Map Trainer] Debug logging to trainer.log
 	trainer_debug = gi.cvar("trainer_debug", "0", CVAR_NOFLAGS);
+	MapTrainer_RegisterCvars();
 
 	// noset vars
 	sv_dedicated = gi.cvar("dedicated", "0", CVAR_NOSET);

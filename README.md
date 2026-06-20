@@ -175,6 +175,28 @@ The trainer is built for **one human practitioner plus bots** on a solo or liste
 | `trainer_debug 1` | Enable debug logging to `trainer.log` |
 | `trainer_debug 0` | Disable debug logging |
 
+### Persisted settings (archived cvars)
+
+These are written automatically when you change options in the trainer menu. They survive game restarts.
+
+| Cvar | Default | Description |
+|------|---------|-------------|
+| `trainer_mode` | `0` | Active trainer: `0` off, `1` path, `2` timing |
+| `trainer_weapons` | `1` | Path trainer: include weapons |
+| `trainer_ammo` | `1` | Path trainer: include ammo |
+| `trainer_health` | `1` | Path trainer: include health |
+| `trainer_armor` | `1` | Path trainer: include armor |
+| `trainer_powerups` | `1` | Path trainer: include powerups |
+| `trainer_combine_health` | `0` | Path trainer: combine health packs |
+| `trainer_speedometer` | `1` | Speedometer enabled |
+| `trainer_bhop` | `0` | Bhop consistency trainer |
+| `trainer_free_collect` | `1` | Timing: free collect at max armor |
+| `trainer_timing_major_only` | `1` | Timing: major items only |
+| `trainer_timing_challenge` | `0` | Timing challenge: `0` off, `1`–`4` easy→pro |
+| `trainer_spawn_intent` | `0` | Spawn trainer enabled (auto-resumes on map load) |
+| `trainer_spawn_random` | `0` | Spawn order: `0` vanilla, `1` random |
+| `trainer_spawn_beacon` | `1` | Spawn trainer beacon beep |
+
 ---
 
 

@@ -244,6 +244,7 @@
     <ClCompile Include="xatrix\m_xatrix_gekk.cpp" />
     <ClCompile Include="xatrix\p_xatrix_weapon.cpp" />
     <ClCompile Include="trainer\trainer_core.cpp" />
+    <ClCompile Include="trainer\trainer_cvars.cpp" />
     <ClCompile Include="trainer\trainer_debug.cpp" />
     <ClCompile Include="trainer\trainer_path.cpp" />
     <ClCompile Include="trainer\trainer_timing.cpp" />

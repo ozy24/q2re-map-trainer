@@ -4,6 +4,7 @@
 #include "../g_local.h"
 #include "trainer.h"
 #include "trainer_config.h"
+#include "trainer_cvars.h"
 
 // ==================== MODE MANAGEMENT ====================
 
@@ -118,40 +119,15 @@ void MapTrainer_Init()
 	level.map_trainer.first_pickup = true;
 	level.map_trainer.welcome_message_shown = false;
 	level.map_trainer.welcome_message_time = 0_ms;
-	
-	// Initialize all item category toggles to enabled by default
-	level.map_trainer.weapons_enabled = true;
-	level.map_trainer.ammo_enabled = true;
-	level.map_trainer.health_enabled = true;
-	level.map_trainer.armor_enabled = true;
-	level.map_trainer.powerups_enabled = true;
-	
-	// Initialize speedometer as enabled by default
-	level.map_trainer.speedometer_enabled = true;
-	
-	// Initialize trainer mode as disabled by default
-	level.map_trainer.trainer_mode = trainer_mode_t::OFF;
-	// Initialize combine health packs as disabled by default (OFF = separated, ON = combined)
-	level.map_trainer.combine_health_packs = false;
-	// Initialize bhop trainer as disabled by default
-	level.map_trainer.bhop_enabled = false;
-	level.map_trainer.spawn_trainer_true_random = false;
+
+	// Per-map runtime state (config fields loaded from cvars below)
+	level.map_trainer.timing_debug_enabled = false;
 	level.map_trainer.spawn_trainer_force_random_pick = false;
 	level.map_trainer.spawn_trainer_owner = nullptr;
 	level.map_trainer.spawn_trainer_total_spawns = 0;
 	level.map_trainer.spawn_trainer_last_spawn_index = -1;
-	// Initialize spawn trainer state
-	MapTrainer_InitSpawnTrainerState();
-	
-	// Initialize free collect as enabled by default
-	level.map_trainer.free_collect_enabled = true;
-	// Initialize debug prints as disabled by default
-	level.map_trainer.timing_debug_enabled = false;
-	// Initialize major items only as enabled by default (focus on duel-relevant items)
-	level.map_trainer.timing_major_items_only = true;
-	// Initialize timing challenge as off by default
-	level.map_trainer.timing_challenge_mode = timing_challenge_mode_t::OFF;
-	// Initialize timing entries array
+	level.map_trainer.spawn_trainer_resume_pending = false;
+	level.map_trainer.spawn_trainer_resume_next_try = 0_ms;
 	level.map_trainer.timing_entry_count = 0;
 	for (int32_t i = 0; i < level.map_trainer.MAX_TIMING_ENTRIES; i++)
 	{
@@ -163,13 +139,10 @@ void MapTrainer_Init()
 		level.map_trainer.timing_entries[i].item_name = nullptr;
 		level.map_trainer.timing_entries[i].item_classname = nullptr;
 	}
+	MapTrainer_InitSpawnTrainerState();
 
-	// Spawn trainer auto-resume defaults (overwritten by LoadConfig below if persisted)
-	level.map_trainer.spawn_trainer_intent = false;
-	level.map_trainer.spawn_trainer_resume_pending = false;
-	level.map_trainer.spawn_trainer_resume_next_try = 0_ms;
-
-	// Overlay any settings the player configured on previous maps
+	// Load persisted settings: archived cvars (survive restart), then in-memory overlay (map changes)
+	MapTrainer_LoadFromCvars();
 	MapTrainer_LoadConfig();
 	MapTrainer_ValidateTrainerMode();
 
@@ -213,6 +186,8 @@ void MapTrainer_SaveConfig()
 	cfg.spawn_trainer_beacon_enabled = level.map_trainer.spawn_trainer_beacon_enabled;
 	cfg.spawn_trainer_intent = level.map_trainer.spawn_trainer_intent;
 	cfg.valid = true;
+
+	MapTrainer_WriteCvars();
 }
 
 void MapTrainer_LoadConfig()

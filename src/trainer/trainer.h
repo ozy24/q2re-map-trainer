@@ -121,8 +121,8 @@ struct map_trainer_t
 
 // Persistent (cross-map) copy of the trainer's CONFIG fields. Lives in game_locals_t,
 // which survives map changes; mirrored into/out of level.map_trainer at load/save time.
-// In-memory only today (not in game_locals_t_savestruct). On-disk/cvar persistence (Phase 2)
-// will need a config version or explicit migration; MapTrainer_ValidateTrainerMode clamps bad enums.
+// In-memory mirror for map changes within a session; archived trainer_* cvars are the
+// restart-persistent source of truth (see trainer_cvars.cpp).
 // Only configuration is persisted here - never runtime state (item lists, targets, live
 // timings, bot edicts), which is rebuilt per map.
 struct map_trainer_config_t
@@ -146,10 +146,11 @@ struct map_trainer_config_t
 
 // Initialization
 void MapTrainer_Init();
+void MapTrainer_RegisterCvars();
 
 // Config persistence across map changes
-void MapTrainer_SaveConfig(); // level.map_trainer -> game.map_trainer_config
-void MapTrainer_LoadConfig(); // game.map_trainer_config -> level.map_trainer
+void MapTrainer_SaveConfig(); // level.map_trainer -> game.map_trainer_config + archived cvars
+void MapTrainer_LoadConfig(); // game.map_trainer_config -> level.map_trainer (in-session overlay)
 
 // Centralized path/timing mode switching (mutual exclusion)
 void MapTrainer_SetMode(trainer_mode_t mode, edict_t *notify = nullptr);
