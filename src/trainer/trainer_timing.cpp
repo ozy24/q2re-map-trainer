@@ -3,28 +3,29 @@
 
 #include "../g_local.h"
 #include "trainer.h"
+#include "trainer_config.h"
 
 // ==================== TIMING TRAINER FEATURE ====================
-
-// Constants
-constexpr float ITEM_PICKUP_RADIUS = 64.0f; // Standard Quake 2 pickup radius
-constexpr float ITEM_POSITION_EPSILON = 16.0f; // Distance threshold for considering items at same position
-constexpr gtime_t MEGAHEALTH_INDEFINITE_GRACE = 999999_sec; // Grace period until decay finishes
-constexpr gtime_t MEGAHEALTH_PHASE2_GRACE = 3_sec; // Grace period after decay before timing checks
-constexpr gtime_t MEGAHEALTH_EXPIRE_TIMEOUT = 60_sec; // Auto-expire megahealth entry if player doesn't return
 
 // Helper function to get timing window based on challenge difficulty
 static float MapTrainer_GetTimingWindow(timing_challenge_mode_t mode)
 {
 	switch (mode)
 	{
-		case timing_challenge_mode_t::EASY:   return 8.0f;
-		case timing_challenge_mode_t::MEDIUM: return 5.0f;
-		case timing_challenge_mode_t::HARD:   return 3.0f;
-		case timing_challenge_mode_t::PRO:    return 1.0f;
+		case timing_challenge_mode_t::EASY:   return trainer_config::TIMING_WINDOW_EASY_SEC;
+		case timing_challenge_mode_t::MEDIUM: return trainer_config::TIMING_WINDOW_MEDIUM_SEC;
+		case timing_challenge_mode_t::HARD:   return trainer_config::TIMING_WINDOW_HARD_SEC;
+		case timing_challenge_mode_t::PRO:    return trainer_config::TIMING_WINDOW_PRO_SEC;
 		case timing_challenge_mode_t::OFF:
 		default:                               return 0.0f; // Not used when OFF
 	}
+}
+
+namespace
+{
+constexpr gtime_t MEGAHEALTH_INDEFINITE_GRACE = 999999_sec;
+constexpr gtime_t MEGAHEALTH_PHASE2_GRACE = 3_sec;
+constexpr gtime_t MEGAHEALTH_EXPIRE_TIMEOUT = 60_sec;
 }
 
 // Helper function to check if item is "major" for duel practice
@@ -78,7 +79,7 @@ map_trainer_t::timing_entry_t* MapTrainer_FindTimingEntry(const char *classname,
 			// Check if position matches (within epsilon tolerance)
 			vec3_t diff = position - level.map_trainer.timing_entries[i].position;
 			float distance = diff.length();
-			if (distance <= ITEM_POSITION_EPSILON)
+			if (distance <= trainer_config::TIMING_ITEM_POSITION_EPSILON)
 			{
 				return &level.map_trainer.timing_entries[i];
 			}
@@ -139,7 +140,7 @@ map_trainer_t::timing_entry_t* MapTrainer_CreateOrUpdateTimingEntry(const char *
 // [Map Trainer] New function - handles timing trainer item pickup logic
 void MapTrainer_OnTimingItemPickup(edict_t *ent, edict_t *other)
 {
-	if (!level.map_trainer.timing_enabled || !ent->item || !ent->item->classname)
+	if (level.map_trainer.trainer_mode != trainer_mode_t::TIMING || !ent->item || !ent->item->classname)
 		return;
 
 	const char *classname = ent->item->classname;
@@ -339,7 +340,7 @@ void MapTrainer_OnTimingItemPickup(edict_t *ent, edict_t *other)
 
 void MapTrainer_CheckArmorTiming(edict_t *player)
 {
-	if (!level.map_trainer.timing_enabled || !player->client)
+	if (level.map_trainer.trainer_mode != trainer_mode_t::TIMING || !player->client)
 		return;
 
 	// Check all active timing entries
@@ -361,7 +362,7 @@ void MapTrainer_CheckArmorTiming(edict_t *player)
 		vec3_t diff = player->s.origin - entry->position;
 		float distance = diff.length();
 
-		if (distance <= ITEM_PICKUP_RADIUS) // Within pickup radius
+		if (distance <= trainer_config::TIMING_ITEM_PICKUP_RADIUS) // Within pickup radius
 		{
 			gtime_t current_time = level.time;
 			gtime_t expected_respawn_time = entry->pickup_time + entry->respawn_time;
@@ -387,7 +388,7 @@ void MapTrainer_CheckArmorTiming(edict_t *player)
 				if (abs_time_diff <= window)
 				{
 					// SUCCESS - within timing window
-					const char* quality = (abs_time_diff <= 0.5f) ? "Perfect timing!" : "Good timing!";
+					const char* quality = (abs_time_diff <= trainer_config::TIMING_PERFECT_THRESHOLD_SEC) ? "Perfect timing!" : "Good timing!";
 					gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("{}: SUCCESS {:+.2f}s", 
 						entry->item_name ? entry->item_name : "?", time_diff).data());
 					gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("{} - {} ({:+.2f}s)", 
@@ -419,7 +420,7 @@ void MapTrainer_CheckArmorTiming(edict_t *player)
 
 void MapTrainer_CheckMegahealthTiming(edict_t *player)
 {
-	if (!level.map_trainer.timing_enabled || !player->client)
+	if (level.map_trainer.trainer_mode != trainer_mode_t::TIMING || !player->client)
 		return;
 
 	// Check all active megahealth timing entries
@@ -505,7 +506,7 @@ void MapTrainer_CheckMegahealthTiming(edict_t *player)
 		vec3_t diff = player->s.origin - entry->position;
 		float distance = diff.length();
 
-		if (distance <= ITEM_PICKUP_RADIUS) // Within pickup radius
+		if (distance <= trainer_config::TIMING_ITEM_PICKUP_RADIUS) // Within pickup radius
 		{
 			gtime_t current_time = level.time;
 			gtime_t expected_respawn_time = entry->megahealth_respawn_start + entry->respawn_time;
@@ -531,7 +532,7 @@ void MapTrainer_CheckMegahealthTiming(edict_t *player)
 				if (abs_time_diff <= window)
 				{
 					// SUCCESS - within timing window
-					const char* quality = (abs_time_diff <= 0.5f) ? "Perfect timing!" : "Good timing!";
+					const char* quality = (abs_time_diff <= trainer_config::TIMING_PERFECT_THRESHOLD_SEC) ? "Perfect timing!" : "Good timing!";
 					gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Megahealth: SUCCESS {:+.2f}s", time_diff).data());
 					gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("Megahealth - {} ({:+.2f}s)", quality, time_diff).data());
 				}

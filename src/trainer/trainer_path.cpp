@@ -3,6 +3,7 @@
 
 #include "../g_local.h"
 #include "trainer.h"
+#include "trainer_config.h"
 
 // ==================== PATH TRAINING FEATURE ====================
 
@@ -17,7 +18,7 @@ bool MapTrainer_IsItemAvailable(const char *class_name, const vec3_t &position)
 		float distance = diff.length();
 		
 		// Check if this entity is at the expected position (tight tolerance since items don't move)
-		if (distance < 32.0f) // Items spawn at exact positions, small tolerance for floating point
+		if (distance < trainer_config::PATH_ITEM_POSITION_EPSILON)
 		{
 			// Check if this item is available (not respawning)
 			if (!(ent->svflags & SVF_RESPAWNING) && ent->solid != SOLID_NOT)
@@ -133,7 +134,7 @@ void MapTrainer_PickNewTarget()
 	// Always show "travel from X to Y" if we have a previous target (and training is enabled)
 	if (level.map_trainer.previous_target_index >= 0 && 
 		level.map_trainer.previous_target_index < level.map_trainer.item_count &&
-		level.map_trainer.training_enabled)
+		level.map_trainer.trainer_mode == trainer_mode_t::PATH)
 	{
 		map_trainer_item_t *previous = &level.map_trainer.items[level.map_trainer.previous_target_index];
 		
@@ -228,15 +229,15 @@ void MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player)
 
 void MapTrainer_ShowWelcomeMessage(edict_t *player)
 {
-	if (level.map_trainer.training_enabled && level.map_trainer.initialized)
+	if (level.map_trainer.trainer_mode == trainer_mode_t::PATH && level.map_trainer.initialized)
 	{
 		gi.LocClient_Print(player, PRINT_CENTER, "Map items loaded.\nPlease pick up an item to begin.");
 	}
-	else if (level.map_trainer.training_enabled && !level.map_trainer.initialized)
+	else if (level.map_trainer.trainer_mode == trainer_mode_t::PATH && !level.map_trainer.initialized)
 	{
 		gi.LocClient_Print(player, PRINT_CENTER, "No items found in map.\nTraining mode disabled.");
 		// Auto-disable training if items weren't found (persist so it doesn't re-arm next map)
-		level.map_trainer.training_enabled = false;
+		level.map_trainer.trainer_mode = trainer_mode_t::OFF;
 		MapTrainer_SaveConfig();
 	}
 	else

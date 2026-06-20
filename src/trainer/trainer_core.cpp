@@ -3,6 +3,105 @@
 
 #include "../g_local.h"
 #include "trainer.h"
+#include "trainer_config.h"
+
+// ==================== MODE MANAGEMENT ====================
+
+static void MapTrainer_TeardownPathMode()
+{
+	if (level.map_trainer.items)
+	{
+		gi.TagFree(level.map_trainer.items);
+		level.map_trainer.items = nullptr;
+	}
+	level.map_trainer.item_count = 0;
+	level.map_trainer.initialized = false;
+	level.map_trainer.current_target_index = -1;
+	level.map_trainer.previous_target_index = -1;
+}
+
+static void MapTrainer_TeardownTimingMode()
+{
+	for (int32_t i = 0; i < level.map_trainer.MAX_TIMING_ENTRIES; i++)
+		level.map_trainer.timing_entries[i].active = false;
+	level.map_trainer.timing_entry_count = 0;
+}
+
+void MapTrainer_ValidateTrainerMode()
+{
+	const int32_t mode = static_cast<int32_t>(level.map_trainer.trainer_mode);
+	if (mode < static_cast<int32_t>(trainer_mode_t::OFF) ||
+		mode > static_cast<int32_t>(trainer_mode_t::TIMING))
+	{
+		level.map_trainer.trainer_mode = trainer_mode_t::OFF;
+	}
+}
+
+void MapTrainer_SetMode(trainer_mode_t mode, edict_t *notify)
+{
+	MapTrainer_ValidateTrainerMode();
+
+	if (mode == level.map_trainer.trainer_mode)
+		return;
+
+	const trainer_mode_t old_mode = level.map_trainer.trainer_mode;
+
+	switch (old_mode)
+	{
+	case trainer_mode_t::PATH:
+		MapTrainer_TeardownPathMode();
+		break;
+	case trainer_mode_t::TIMING:
+		MapTrainer_TeardownTimingMode();
+		break;
+	case trainer_mode_t::OFF:
+		break;
+	}
+
+	level.map_trainer.trainer_mode = mode;
+
+	switch (mode)
+	{
+	case trainer_mode_t::PATH:
+		if (old_mode == trainer_mode_t::TIMING && notify)
+			gi.LocClient_Print(notify, PRINT_HIGH, "Item Timing Trainer automatically disabled.");
+
+		MapTrainer_BuildItemList(level.mapname);
+		level.map_trainer.first_pickup = true;
+		level.map_trainer.current_target_index = -1;
+		level.map_trainer.previous_target_index = -1;
+
+		if (level.map_trainer.initialized)
+		{
+			if (notify)
+				gi.LocClient_Print(notify, PRINT_HIGH, "Item Path Trainer enabled. Items loaded from map.");
+		}
+		else
+		{
+			if (notify)
+				gi.LocClient_Print(notify, PRINT_HIGH, "No items found in map. Item Path Trainer disabled.");
+			level.map_trainer.trainer_mode = trainer_mode_t::OFF;
+		}
+		break;
+	case trainer_mode_t::TIMING:
+		if (old_mode == trainer_mode_t::PATH && notify)
+			gi.LocClient_Print(notify, PRINT_HIGH, "Item Path Trainer automatically disabled.");
+		if (notify)
+			gi.LocClient_Print(notify, PRINT_HIGH, "Item Timing Trainer enabled.");
+		break;
+	case trainer_mode_t::OFF:
+		if (notify)
+		{
+			if (old_mode == trainer_mode_t::PATH)
+				gi.LocClient_Print(notify, PRINT_HIGH, "Item Path Trainer disabled.");
+			else if (old_mode == trainer_mode_t::TIMING)
+				gi.LocClient_Print(notify, PRINT_HIGH, "Item Timing Trainer disabled.");
+		}
+		break;
+	}
+
+	MapTrainer_SaveConfig();
+}
 
 // ==================== CORE INITIALIZATION ====================
 
@@ -30,14 +129,10 @@ void MapTrainer_Init()
 	// Initialize speedometer as enabled by default
 	level.map_trainer.speedometer_enabled = true;
 	
-	// Initialize training as disabled by default
-	level.map_trainer.training_enabled = false;
-	
+	// Initialize trainer mode as disabled by default
+	level.map_trainer.trainer_mode = trainer_mode_t::OFF;
 	// Initialize combine health packs as disabled by default (OFF = separated, ON = combined)
 	level.map_trainer.combine_health_packs = false;
-	
-	// Initialize timing trainer as disabled by default
-	level.map_trainer.timing_enabled = false;
 	// Initialize bhop trainer as disabled by default
 	level.map_trainer.bhop_enabled = false;
 	level.map_trainer.spawn_trainer_true_random = false;
@@ -72,14 +167,16 @@ void MapTrainer_Init()
 	// Spawn trainer auto-resume defaults (overwritten by LoadConfig below if persisted)
 	level.map_trainer.spawn_trainer_intent = false;
 	level.map_trainer.spawn_trainer_resume_pending = false;
+	level.map_trainer.spawn_trainer_resume_next_try = 0_ms;
 
 	// Overlay any settings the player configured on previous maps
 	MapTrainer_LoadConfig();
+	MapTrainer_ValidateTrainerMode();
 
 	// Re-establish per-map runtime state from the (possibly restored) config.
 	// Item arrays were freed with TAG_LEVEL before this runs and items is now nullptr,
 	// so BuildItemList rebuilds cleanly for the new map.
-	if (level.map_trainer.training_enabled)
+	if (level.map_trainer.trainer_mode == trainer_mode_t::PATH)
 	{
 		MapTrainer_BuildItemList(level.mapname);
 		level.map_trainer.first_pickup = true;
@@ -105,9 +202,8 @@ void MapTrainer_SaveConfig()
 	cfg.armor_enabled = level.map_trainer.armor_enabled;
 	cfg.powerups_enabled = level.map_trainer.powerups_enabled;
 	cfg.speedometer_enabled = level.map_trainer.speedometer_enabled;
-	cfg.training_enabled = level.map_trainer.training_enabled;
+	cfg.trainer_mode = level.map_trainer.trainer_mode;
 	cfg.combine_health_packs = level.map_trainer.combine_health_packs;
-	cfg.timing_enabled = level.map_trainer.timing_enabled;
 	cfg.free_collect_enabled = level.map_trainer.free_collect_enabled;
 	cfg.timing_debug_enabled = level.map_trainer.timing_debug_enabled;
 	cfg.timing_major_items_only = level.map_trainer.timing_major_items_only;
@@ -131,9 +227,8 @@ void MapTrainer_LoadConfig()
 	level.map_trainer.armor_enabled = cfg.armor_enabled;
 	level.map_trainer.powerups_enabled = cfg.powerups_enabled;
 	level.map_trainer.speedometer_enabled = cfg.speedometer_enabled;
-	level.map_trainer.training_enabled = cfg.training_enabled;
+	level.map_trainer.trainer_mode = cfg.trainer_mode;
 	level.map_trainer.combine_health_packs = cfg.combine_health_packs;
-	level.map_trainer.timing_enabled = cfg.timing_enabled;
 	level.map_trainer.free_collect_enabled = cfg.free_collect_enabled;
 	level.map_trainer.timing_debug_enabled = cfg.timing_debug_enabled;
 	level.map_trainer.timing_major_items_only = cfg.timing_major_items_only;
@@ -158,8 +253,8 @@ static void MapTrainer_FriendlyNameFromPickup(const char* pickup_name, char* out
 	{
 		// Skip the '$' and 'item_' prefix if present
 		const char* name = pickup_name + 1;
-		if (strncmp(name, "item_", 5) == 0)
-			name += 5;
+		if (strncmp(name, "item_", trainer_config::FRIENDLY_NAME_ITEM_PREFIX_LEN) == 0)
+			name += trainer_config::FRIENDLY_NAME_ITEM_PREFIX_LEN;
 		// Capitalize first letter, lowercase the rest, and replace underscores with spaces
 		if (*name)
 		{

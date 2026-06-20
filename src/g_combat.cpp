@@ -661,7 +661,7 @@ void T_Damage(edict_t *targ, edict_t *inflictor, edict_t *attacker, const vec3_t
 	// Only apply to human players when any training mode is enabled (item path, timing, or jump)
 	if (level.map_trainer.initialized && targ->client && 
 	    !(targ->svflags & SVF_BOT) && 
-	    (level.map_trainer.training_enabled || level.map_trainer.timing_enabled || level.map_trainer.bhop_enabled) &&
+	    (level.map_trainer.trainer_mode != trainer_mode_t::OFF || level.map_trainer.bhop_enabled) &&
 	    !(dflags & DAMAGE_NO_PROTECTION))
 	{
 		take = 0;

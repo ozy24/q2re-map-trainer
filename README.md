@@ -159,6 +159,12 @@ Enable from the main menu to see your horizontal movement speed in real-time. Gr
 
 ---
 
+## Design and limitations
+
+The trainer is built for **one human practitioner plus bots** on a solo or listen server. All trainer configuration and runtime state lives in server-global structures (`level.map_trainer` / `game.map_trainer_config`), and center-print messages broadcast to every connected client. This is intentional — a per-client redesign would only matter if multi-human practice became a goal.
+
+---
+
 ## ⚙️ Console Commands
 
 | Command | Description |

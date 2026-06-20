@@ -23,6 +23,14 @@ enum class timing_challenge_mode_t : int32_t
 	PRO = 4      // ±1 second
 };
 
+// Path and Timing trainers are mutually exclusive
+enum class trainer_mode_t : int32_t
+{
+	OFF = 0,
+	PATH = 1,
+	TIMING = 2
+};
+
 struct map_trainer_item_t
 {
 	char friendly_name[64];
@@ -62,12 +70,10 @@ struct map_trainer_t
 	bool powerups_enabled;
 	// Speedometer
 	bool speedometer_enabled;
-	// Training mode toggle
-	bool training_enabled;
+	// Path or Timing trainer (mutually exclusive)
+	trainer_mode_t trainer_mode;
 	// Combine health packs toggle
 	bool combine_health_packs;
-	// Timing trainer toggle
-	bool timing_enabled;
 	// Free collect toggle - allows picking up armor even at max
 	bool free_collect_enabled;
 	// Debug prints toggle for timing trainer
@@ -110,10 +116,13 @@ struct map_trainer_t
 	// Spawn trainer auto-resume across map changes
 	bool spawn_trainer_intent;          // mirrored config: user wants spawn trainer enabled
 	bool spawn_trainer_resume_pending;  // runtime: re-spawn bot on this map once a human is in-game
+	gtime_t spawn_trainer_resume_next_try; // runtime: backoff between failed resume attempts
 };
 
 // Persistent (cross-map) copy of the trainer's CONFIG fields. Lives in game_locals_t,
 // which survives map changes; mirrored into/out of level.map_trainer at load/save time.
+// In-memory only today (not in game_locals_t_savestruct). On-disk/cvar persistence (Phase 2)
+// will need a config version or explicit migration; MapTrainer_ValidateTrainerMode clamps bad enums.
 // Only configuration is persisted here - never runtime state (item lists, targets, live
 // timings, bot edicts), which is rebuilt per map.
 struct map_trainer_config_t
@@ -121,9 +130,8 @@ struct map_trainer_config_t
 	bool valid; // false until first save; gates MapTrainer_LoadConfig
 	bool weapons_enabled, ammo_enabled, health_enabled, armor_enabled, powerups_enabled;
 	bool speedometer_enabled;
-	bool training_enabled;
+	trainer_mode_t trainer_mode;
 	bool combine_health_packs;
-	bool timing_enabled;
 	bool free_collect_enabled;
 	bool timing_debug_enabled;
 	bool timing_major_items_only;
@@ -142,6 +150,10 @@ void MapTrainer_Init();
 // Config persistence across map changes
 void MapTrainer_SaveConfig(); // level.map_trainer -> game.map_trainer_config
 void MapTrainer_LoadConfig(); // game.map_trainer_config -> level.map_trainer
+
+// Centralized path/timing mode switching (mutual exclusion)
+void MapTrainer_SetMode(trainer_mode_t mode, edict_t *notify = nullptr);
+void MapTrainer_ValidateTrainerMode();
 
 // Per-frame trainer tick (deferred spawn-trainer auto-resume)
 void MapTrainer_RunFrame();

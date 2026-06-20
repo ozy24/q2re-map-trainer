@@ -3,6 +3,7 @@
 
 #include "../g_local.h"
 #include "trainer.h"
+#include "trainer_config.h"
 
 extern edict_t *ClientChooseSlot(const char *userinfo, const char *social_id, bool isBot, edict_t **ignore, size_t num_ignore, bool cinematic);
 extern bool ClientConnect(edict_t *ent, char *userinfo, const char *social_id, bool isBot);
@@ -15,8 +16,8 @@ constexpr const char *SPAWN_TRAINER_SOCIAL_ID = "spawn_trainer_bot";
 constexpr const char *SPAWN_TRAINER_NAME = "Spawn Trainer";
 constexpr const char *SPAWN_TRAINER_SKIN = "male/grunt";
 constexpr const char *SPAWN_TRAINER_BEACON_SOUND = "weapons/hyprbf1a.wav";
-constexpr gtime_t SPAWN_TRAINER_BEACON_INTERVAL = gtime_t::from_sec(2.0f);
-constexpr gtime_t SPAWN_TRAINER_BEACON_INITIAL_DELAY = gtime_t::from_sec(0.1f);
+constexpr gtime_t SPAWN_TRAINER_BEACON_INTERVAL = gtime_t::from_sec(trainer_config::SPAWN_TRAINER_BEACON_INTERVAL_SEC);
+constexpr gtime_t SPAWN_TRAINER_BEACON_INITIAL_DELAY = gtime_t::from_sec(trainer_config::SPAWN_TRAINER_BEACON_INITIAL_DELAY_SEC);
 
 int spawn_trainer_beacon_sound_index = 0;
 
@@ -168,7 +169,7 @@ bool MapTrainer_HandleSpawnTrainerBot(edict_t *bot)
 		{
 			MapTrainer_PrimeBeacon();
 			if (spawn_trainer_beacon_sound_index != 0)
-				gi.sound(bot, CHAN_AUTO, spawn_trainer_beacon_sound_index, 1.0f, ATTN_IDLE, 0);
+				gi.sound(bot, CHAN_AUTO, spawn_trainer_beacon_sound_index, trainer_config::SOUND_VOLUME_FULL, ATTN_IDLE, 0);
 
 			MapTrainer_ResetBeaconTimer();
 		}
@@ -248,8 +249,12 @@ void MapTrainer_RunFrame()
 	if (!human_present)
 		return; // keep pending until someone loads in
 
-	// Attempt the re-spawn once; clear the flag regardless of outcome to avoid per-frame retries.
-	level.map_trainer.spawn_trainer_resume_pending = false;
-	MapTrainer_EnableSpawnTrainer(nullptr);
+	if (level.time < level.map_trainer.spawn_trainer_resume_next_try)
+		return;
+
+	if (MapTrainer_EnableSpawnTrainer(nullptr))
+		level.map_trainer.spawn_trainer_resume_pending = false;
+	else
+		level.map_trainer.spawn_trainer_resume_next_try = level.time + gtime_t::from_sec(trainer_config::SPAWN_TRAINER_RESUME_RETRY_SEC);
 }
 

@@ -3,6 +3,7 @@
 
 #include "../g_local.h"
 #include "trainer.h"
+#include "trainer_config.h"
 #include "trainer_version.h"
 
 // ==================== MENU SYSTEM ====================
@@ -14,7 +15,7 @@ void MapTrainer_MenuClose(edict_t *ent, pmenuhnd_t *p)
 
 void MapTrainer_RestartPathTraining()
 {
-	if (level.map_trainer.training_enabled)
+	if (level.map_trainer.trainer_mode == trainer_mode_t::PATH)
 	{
 		// Rebuild the item list with new category settings
 		MapTrainer_BuildItemList(level.mapname);
@@ -77,57 +78,11 @@ void MapTrainer_ToggleSpeedometer(edict_t *ent, pmenuhnd_t *p)
 
 void MapTrainer_ToggleTraining(edict_t *ent, pmenuhnd_t *p)
 {
-	level.map_trainer.training_enabled = !level.map_trainer.training_enabled;
-	
-	// If training mode was just turned ON, load CSV and reset the training state
-	if (level.map_trainer.training_enabled)
-	{
-		// Mutual exclusion: disable timing trainer if it's enabled
-		if (level.map_trainer.timing_enabled)
-		{
-			level.map_trainer.timing_enabled = false;
-			// Reset all active timings when disabled
-			for (int32_t i = 0; i < level.map_trainer.MAX_TIMING_ENTRIES; i++)
-			{
-				level.map_trainer.timing_entries[i].active = false;
-			}
-			level.map_trainer.timing_entry_count = 0;
-			gi.LocClient_Print(ent, PRINT_HIGH, "Item Timing Trainer automatically disabled.");
-		}
-		
-		MapTrainer_BuildItemList(level.mapname);
-		level.map_trainer.first_pickup = true;
-		level.map_trainer.current_target_index = -1;
-		level.map_trainer.previous_target_index = -1;
-		
-		// Give immediate feedback about item loading
-		if (level.map_trainer.initialized)
-		{
-			gi.LocClient_Print(ent, PRINT_HIGH, "Item Path Trainer enabled. Items loaded from map.");
-		}
-		else
-		{
-			gi.LocClient_Print(ent, PRINT_HIGH, "No items found in map. Item Path Trainer disabled.");
-			level.map_trainer.training_enabled = false; // Auto-disable if no items
-		}
-	}
+	if (level.map_trainer.trainer_mode == trainer_mode_t::PATH)
+		MapTrainer_SetMode(trainer_mode_t::OFF, ent);
 	else
-	{
-		// Training mode turned OFF - clean up item data
-		if (level.map_trainer.items)
-		{
-			gi.TagFree(level.map_trainer.items);
-			level.map_trainer.items = nullptr;
-		}
-		level.map_trainer.item_count = 0;
-		level.map_trainer.initialized = false;
-		level.map_trainer.current_target_index = -1;
-		level.map_trainer.previous_target_index = -1;
-		
-		gi.LocClient_Print(ent, PRINT_HIGH, "Item Path Trainer disabled.");
-	}
+		MapTrainer_SetMode(trainer_mode_t::PATH, ent);
 
-	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -147,9 +102,9 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 	pmenu_t *entries = ent->client->menu->entries;
 	
 	// Update toggle display text
-	Q_strlcpy(entries[2].text, G_Fmt("Path Trainer: {}", level.map_trainer.training_enabled ? "Enabled" : "Disabled").data(), sizeof(entries[2].text));
+	Q_strlcpy(entries[2].text, G_Fmt("Path Trainer: {}", level.map_trainer.trainer_mode == trainer_mode_t::PATH ? "Enabled" : "Disabled").data(), sizeof(entries[2].text));
 	
-	if (level.map_trainer.training_enabled)
+	if (level.map_trainer.trainer_mode == trainer_mode_t::PATH)
 	{
 		// Show item category options when training is enabled
 		Q_strlcpy(entries[3].text, G_Fmt("Weapons: {}", level.map_trainer.weapons_enabled ? "ON" : "OFF").data(), sizeof(entries[3].text));
@@ -214,41 +169,11 @@ void MapTrainer_OpenItemPathingSubmenu(edict_t *ent, pmenuhnd_t *p)
 
 void MapTrainer_ToggleTiming(edict_t *ent, pmenuhnd_t *p)
 {
-	level.map_trainer.timing_enabled = !level.map_trainer.timing_enabled;
-	
-	if (level.map_trainer.timing_enabled)
-	{
-		// Mutual exclusion: disable path trainer if it's enabled
-		if (level.map_trainer.training_enabled)
-		{
-			level.map_trainer.training_enabled = false;
-			// Clean up item data
-			if (level.map_trainer.items)
-			{
-				gi.TagFree(level.map_trainer.items);
-				level.map_trainer.items = nullptr;
-			}
-			level.map_trainer.item_count = 0;
-			level.map_trainer.initialized = false;
-			level.map_trainer.current_target_index = -1;
-			level.map_trainer.previous_target_index = -1;
-			gi.LocClient_Print(ent, PRINT_HIGH, "Item Path Trainer automatically disabled.");
-		}
-		
-		gi.LocClient_Print(ent, PRINT_HIGH, "Item Timing Trainer enabled.");
-	}
+	if (level.map_trainer.trainer_mode == trainer_mode_t::TIMING)
+		MapTrainer_SetMode(trainer_mode_t::OFF, ent);
 	else
-	{
-		gi.LocClient_Print(ent, PRINT_HIGH, "Item Timing Trainer disabled.");
-		// Reset all active timings when disabled
-		for (int32_t i = 0; i < level.map_trainer.MAX_TIMING_ENTRIES; i++)
-		{
-			level.map_trainer.timing_entries[i].active = false;
-		}
-		level.map_trainer.timing_entry_count = 0;
-	}
+		MapTrainer_SetMode(trainer_mode_t::TIMING, ent);
 
-	MapTrainer_SaveConfig();
 	PMenu_Update(ent);
 }
 
@@ -307,7 +232,7 @@ void MapTrainer_ToggleTimingChallenge(edict_t *ent, pmenuhnd_t *p)
 {
 	// Cycle through modes: OFF -> EASY -> MEDIUM -> HARD -> PRO -> OFF
 	int current_mode = static_cast<int>(level.map_trainer.timing_challenge_mode);
-	current_mode = (current_mode + 1) % 5; // 5 modes total (0-4)
+	current_mode = (current_mode + 1) % trainer_config::TIMING_CHALLENGE_MODE_COUNT;
 	level.map_trainer.timing_challenge_mode = static_cast<timing_challenge_mode_t>(current_mode);
 	
 	// Show feedback based on new mode
@@ -342,7 +267,7 @@ void MapTrainer_UpdateItemTimingSubmenu(edict_t *ent)
 	pmenu_t *entries = ent->client->menu->entries;
 	
 	// Update toggle display text
-	Q_strlcpy(entries[2].text, G_Fmt("Timing Trainer: {}", level.map_trainer.timing_enabled ? "Enabled" : "Disabled").data(), sizeof(entries[2].text));
+	Q_strlcpy(entries[2].text, G_Fmt("Timing Trainer: {}", level.map_trainer.trainer_mode == trainer_mode_t::TIMING ? "Enabled" : "Disabled").data(), sizeof(entries[2].text));
 	Q_strlcpy(entries[3].text, G_Fmt("Track: {}", level.map_trainer.timing_major_items_only ? "Major Items" : "All Items").data(), sizeof(entries[3].text));
 	Q_strlcpy(entries[4].text, G_Fmt("Free Collect: {}", level.map_trainer.free_collect_enabled ? "ON" : "OFF").data(), sizeof(entries[4].text));
 	
@@ -477,7 +402,7 @@ void MapTrainer_ToggleSpawnTrainerBeacon(edict_t *ent, pmenuhnd_t *p)
 	level.map_trainer.spawn_trainer_beacon_enabled = !level.map_trainer.spawn_trainer_beacon_enabled;
 
 	if (level.map_trainer.spawn_trainer_beacon_enabled)
-		level.map_trainer.spawn_trainer_next_beep_time = level.time + gtime_t::from_sec(0.1f);
+		level.map_trainer.spawn_trainer_next_beep_time = level.time + gtime_t::from_sec(trainer_config::SPAWN_TRAINER_BEACON_INITIAL_DELAY_SEC);
 	else
 		level.map_trainer.spawn_trainer_next_beep_time = gtime_t();
 

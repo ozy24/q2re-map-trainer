@@ -3,6 +3,7 @@
 
 #include "../g_local.h"
 #include "trainer.h"
+#include "trainer_config.h"
 
 // ==================== JUMP TRAINER FEATURE ====================
 
@@ -23,7 +24,7 @@ void MapTrainer_UpdateSpeedometer(edict_t *player)
 	float speed = horizontal_velocity.length();
 	
 	// Set the speed as a player stat (clamped to 16-bit signed integer range)
-	player->client->ps.stats[STAT_SPEEDOMETER] = static_cast<int16_t>(std::min(speed, 32767.0f));
+	player->client->ps.stats[STAT_SPEEDOMETER] = static_cast<int16_t>(std::min(speed, trainer_config::SPEEDOMETER_MAX_DISPLAY));
 }
 
 // ==================== PRACTICE SPAWN COMMANDS ====================
@@ -106,7 +107,7 @@ void MapTrainer_UpdateBhopTracking(edict_t *player, pmove_t &pm)
 		if (player->client->bhop_recently_landed && now_grounded)
 		{
 			player->client->bhop_grounded_frames_since_landing++;
-			if (player->client->bhop_grounded_frames_since_landing % 10 == 0) // Log every 10 frames
+			if (player->client->bhop_grounded_frames_since_landing % trainer_config::BHOP_DEBUG_LOG_INTERVAL_FRAMES == 0)
 			{
 			TrainerLog("BHOP", "FRAME_COUNT: chain_active=1, frames=%d",
 				player->client->bhop_grounded_frames_since_landing);
@@ -114,7 +115,7 @@ void MapTrainer_UpdateBhopTracking(edict_t *player, pmove_t &pm)
 		}
 
 		// End bhop chain if grounded too long (30 frames ≈ 1 second at 30fps, 0.5s at 60fps)
-		if (now_grounded && player->client->bhop_grounded_frames_since_landing > 30)
+		if (now_grounded && player->client->bhop_grounded_frames_since_landing > trainer_config::BHOP_CHAIN_TIMEOUT_FRAMES)
 		{
 		TrainerLog("BHOP", "TIMEOUT: chain_active=1->0, frames=%d, resetting state",
 			player->client->bhop_grounded_frames_since_landing);
@@ -129,9 +130,9 @@ void MapTrainer_UpdateBhopTracking(edict_t *player, pmove_t &pm)
 	// Classify when a jump actually happens
 	if (pm.jump_sound && !(pm.s.pm_flags & PMF_ON_LADDER))
 	{
-		bool perfect = player->client->bhop_recently_landed && player->client->bhop_grounded_frames_since_landing <= 1;
-		bool late = player->client->bhop_recently_landed && player->client->bhop_grounded_frames_since_landing > 1;
-		bool early_or_held = player->client->bhop_recently_landed && player->client->bhop_jump_held_on_landing && player->client->bhop_grounded_frames_since_landing <= 1;
+		bool perfect = player->client->bhop_recently_landed && player->client->bhop_grounded_frames_since_landing <= trainer_config::BHOP_PERFECT_MAX_FRAMES;
+		bool late = player->client->bhop_recently_landed && player->client->bhop_grounded_frames_since_landing > trainer_config::BHOP_PERFECT_MAX_FRAMES;
+		bool early_or_held = player->client->bhop_recently_landed && player->client->bhop_jump_held_on_landing && player->client->bhop_grounded_frames_since_landing <= trainer_config::BHOP_PERFECT_MAX_FRAMES;
 
 	TrainerLog("BHOP", "JUMP: chain_active=%d, recently_landed=%d, frames=%d, perfect=%d, late=%d",
 		player->client->bhop_chain_active,
@@ -155,7 +156,7 @@ void MapTrainer_UpdateBhopTracking(edict_t *player, pmove_t &pm)
 				TrainerLog("BHOP", "  -> Feedback: Perfect");
 				gi.LocClient_Print(player, PRINT_HIGH, "Bhop: Perfect");
 				// Audible feedback for frame-perfect
-				gi.sound(player, CHAN_AUTO, gi.soundindex("misc/menu3.wav"), 1.0f, ATTN_NONE, 0);
+				gi.sound(player, CHAN_AUTO, gi.soundindex("misc/menu3.wav"), trainer_config::SOUND_VOLUME_FULL, ATTN_NONE, 0);
 			}
 			else if (early_or_held)
 			{
