@@ -330,6 +330,10 @@ void ClientObituary(edict_t *self, edict_t *inflictor, edict_t *attacker, mod_t 
 
 		gi.LocBroadcast_Print(PRINT_MEDIUM, base, self->client->pers.netname, attacker->client->pers.netname);
 
+		// Map Trainer: Spawn Trainer bot deaths don't affect DM score
+		if (MapTrainer_IsSpawnTrainerBot(self))
+			return;
+
 		if (G_TeamplayEnabled())
 		{
 			// ZOID
@@ -2358,11 +2362,7 @@ void PutClientInServer(edict_t *ent)
 		G_PostRespawn(ent);
 	
 	// Map Trainer: Schedule welcome message to show after a short delay (backup for single-player)
-	if (!level.map_trainer.welcome_message_shown)
-	{
-		level.map_trainer.welcome_message_time = level.time + 500_ms;
-	
-	}
+	MapTrainer_ScheduleWelcomeMessage(ent);
 }
 
 /*
@@ -2604,11 +2604,7 @@ void ClientBegin(edict_t *ent)
 	G_SetLevelEntry();
 	
 	// Map Trainer: Schedule welcome message to show after a short delay
-	if (!level.map_trainer.welcome_message_shown)
-	{
-		level.map_trainer.welcome_message_time = level.time + 500_ms;
-	
-	}
+	MapTrainer_ScheduleWelcomeMessage(ent);
 
 	// Map Trainer: track spawn trainer bot connections (non-DM path)
 	MapTrainer_OnSpawnTrainerClientBegin(ent);

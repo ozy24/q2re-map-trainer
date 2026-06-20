@@ -70,11 +70,8 @@ desync.
 - **Fix:** replace the two booleans with a single `trainer_mode` enum (`OFF / PATH / TIMING`) and
   centralize the teardown of the previous mode in one switch.
 
-### 7. Menu uses fragile hard-coded entry indices **[Confirmed]** — *low/medium effort*
-Update functions index entries by literal position (`entries[7]` for the speedometer line,
-`entries[2..8]` for categories, etc.). Re-ordering a menu silently breaks the wrong row.
-- **Fix:** name the indices via an `enum`/`constexpr`, or look entries up by a stable id rather than
-  position.
+### 7. Menu uses fragile hard-coded entry indices **[Addressed]**
+Per-submenu row indices live in `trainer_menu_indices.h` (`main_entry_t`, `path_entry_t`, etc.); update functions use `entry_index(...)` instead of literal positions.
 
 ### 9. Magic numbers scattered through the trainers **[Confirmed]** — *low effort*
 Pickup radius (64), position-match tolerance (32), timing grace period (5s), bhop timeout (30 frames),
@@ -89,22 +86,18 @@ state (e.g. start with speedometer off, or major-items-only off) without recompi
 - **Fix:** expose the initial defaults as archived cvars read in `MapTrainer_Init` (before
   `LoadConfig` overlays any saved values).
 
-### 11. Spawn bot consumes a real player slot **[Confirmed/Potential]** — *medium effort*
-The spawn trainer creates a genuine client via `ClientChooseSlot`/`ClientConnect`, occupying one of
-`maxclients`. On a full or low-slot server this can fail or displace a player; the bot also shows in
-scoreboard/player counts.
-- **Fix:** document the slot requirement; consider reserving/ensuring a slot, and verify the bot is
-  excluded from DM scoring/endlevel logic.
+### 11. Spawn bot consumes a real player slot **[Addressed]**
+The spawn trainer still occupies one `maxclients` slot and appears on the scoreboard. README documents
+the slot requirement; killing the Spawn Trainer bot no longer awards DM frags (`p_client.cpp`
+`ClientObituary`).
 
 ---
 
 ## Lower priority — polish
 
-### 12. `trainer.log` is opened with a relative path, truncated each run **[Confirmed]** — *trivial*
-`trainer_debug.cpp` opens `"trainer.log"` in the process working directory in truncate mode. Multiple
-runs overwrite; location depends on how the game is launched.
-- **Fix:** make the path/append behavior explicit, or note it in the README troubleshooting section
-  (already partly documented).
+### 12. `trainer.log` is opened with a relative path, truncated each run **[Addressed]**
+`trainer_debug.cpp` appends to `"trainer.log"` in the process working directory with a per-session
+banner; README troubleshooting documents location and append behavior.
 
 ### 13. No automated verification **[Confirmed]** — *medium effort*
 Everything is validated manually in-game. The pure-logic pieces (target selection, category filtering,
@@ -112,15 +105,14 @@ timing math, version parsing) could be unit-tested.
 - **Fix:** factor the testable logic behind thin interfaces and add a small host-compiled test target
   (no engine), runnable in CI alongside the build.
 
-### 14. TagMalloc return values are assumed non-null **[Potential]** — *low effort*
-Item/unique-item allocation in `trainer_core.cpp` uses `gi.TagMalloc(...)` and writes into it without
-checking for null. The SDK typically aborts on OOM, so this is low-risk, but worth a guard if you want
-to fail soft.
+### 14. TagMalloc return values are assumed non-null **[Addressed]**
+`MapTrainer_BuildItemList` / `MapTrainer_BuildUniqueItemsList` check `gi.TagMalloc` results and fail
+soft (`initialized = false`, `TrainerLog`) instead of writing through a null pointer.
 
-### 15. Welcome-message / first-pickup flow is implicit **[Potential]** — *low effort*
-Path training relies on `first_pickup` and a welcome center-print to bootstrap. Edge cases (player
-joins mid-map, dies before first pickup, map has exactly one item type) deserve a quick pass to make
-sure the prompt always appears and a target is always reachable.
+### 15. Welcome-message / first-pickup flow is implicit **[Addressed]**
+`MapTrainer_ScheduleWelcomeMessage` centralizes welcome timing; path mode re-prompts after respawn
+while `first_pickup` is still true (e.g. death before first pickup). Single unique item types were
+already handled (`unique_item_count > 1` guard in target selection).
 
 ---
 
@@ -142,6 +134,11 @@ sure the prompt always appears and a target is always reachable.
 - **#3 frame-rate-independent bhop timing** → `bhop_landing_time` + `gtime_t` thresholds (`trainer_jump.cpp`).
 - **#5 item edict cache** → `map_trainer_item_t::ent`, direct availability check (`trainer_path.cpp`).
 - **#8 item flags classification** → `MapTrainer_IsItemCategoryEnabledForItem` (`trainer_core.cpp`).
+- **#7 menu index enums** → `trainer_menu_indices.h`.
+- **#11 spawn bot slot** → README + DM scoring exclusion for Spawn Trainer kills.
+- **#12 trainer.log** → append mode + README.
+- **#14 TagMalloc guards** → `trainer_core.cpp`.
+- **#15 welcome / first-pickup** → `MapTrainer_ScheduleWelcomeMessage` (`trainer_path.cpp`).
 
 ---
 
@@ -152,7 +149,8 @@ sure the prompt always appears and a target is always reachable.
 3. ~~#2 restart persistence (cvars)~~ — done; savegame half optional.
 4. ~~**#3** frame-rate-independent bhop timing~~ — done.
 5. ~~**#5** item-availability caching~~ and ~~**#8** item classification~~ — done.
-6. Longer term: **#13** automated tests; **#7** menu index enums; polish items **#11–#15**.
+6. ~~**#7** menu index enums~~ and polish **#11–#15** — done.
+7. Longer term: **#13** automated tests.
 
 > Note: #1 (per-client state) is intentionally **not** on this list — global state is by design for
 > the single-practitioner use case.

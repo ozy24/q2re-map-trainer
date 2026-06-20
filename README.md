@@ -158,6 +158,8 @@ Enable from the main menu to see your horizontal movement speed in real-time. Gr
 - Great for learning spawn locations and practicing spawn awareness in duels
 - The bot will automatically respawn when killed
 
+**Player slot:** Spawn Trainer connects as a real client (`"Spawn Trainer"`) and uses one `maxclients` slot. On a full server it may fail to enable; solo or listen-server practice with a spare slot is recommended. The bot still appears on the scoreboard, but killing it does **not** change DM frag counts.
+
 ---
 
 ## Design and limitations
@@ -240,7 +242,7 @@ If you encounter issues, enable debug logging:
 ```
 trainer_debug 1
 ```
-This creates a `trainer.log` file in your Quake 2 directory with detailed information.
+This appends to `trainer.log` in the game's **working directory** (often your Quake 2 install folder, depending on how you launch). Each session writes a timestamped banner; earlier sessions are preserved. Disable with `trainer_debug 0`.
 
 ---
 

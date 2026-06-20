@@ -227,3 +227,18 @@ void MapTrainer_ShowWelcomeMessage(edict_t *player)
 		gi.LocClient_Print(player, PRINT_CENTER, "Welcome to the Q2RE Map Trainer.\nPress Tab to open the training menu.");
 	}
 }
+
+void MapTrainer_ScheduleWelcomeMessage(edict_t *player)
+{
+	if (!player || !player->client || (player->svflags & SVF_BOT))
+		return;
+
+	const bool path_awaiting_pickup = level.map_trainer.trainer_mode == trainer_mode_t::PATH &&
+		level.map_trainer.initialized && level.map_trainer.first_pickup;
+
+	if (level.map_trainer.welcome_message_shown && !path_awaiting_pickup)
+		return;
+
+	level.map_trainer.welcome_message_shown = false;
+	level.map_trainer.welcome_message_time = level.time + 500_ms;
+}

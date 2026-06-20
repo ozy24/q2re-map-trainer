@@ -367,6 +367,16 @@ bool MapTrainer_IsItemCategoryEnabled(const char *class_name)
 
 // ==================== ITEM LIST BUILDING ====================
 
+static void MapTrainer_FailItemListAlloc(const char *what)
+{
+	TrainerLog("CORE", "TagMalloc failed allocating %s", what);
+	level.map_trainer.initialized = false;
+	level.map_trainer.item_count = 0;
+	level.map_trainer.unique_item_count = 0;
+	level.map_trainer.items = nullptr;
+	level.map_trainer.unique_items = nullptr;
+}
+
 void MapTrainer_BuildItemList(const char *mapname)
 {
 	// Clean up previous data (using TagFree for TAG_LEVEL allocated memory)
@@ -415,6 +425,11 @@ void MapTrainer_BuildItemList(const char *mapname)
 		// Use TagMalloc for automatic cleanup on level change
 		level.map_trainer.items = (map_trainer_item_t*)gi.TagMalloc(
 			sizeof(map_trainer_item_t) * level.map_trainer.item_count, TAG_LEVEL);
+		if (!level.map_trainer.items)
+		{
+			MapTrainer_FailItemListAlloc("item list");
+			return;
+		}
 		for (size_t i = 0; i < temp_items.size(); i++)
 		{
 			level.map_trainer.items[i] = temp_items[i];
@@ -436,6 +451,11 @@ void MapTrainer_BuildUniqueItemsList()
 	// Allocate memory for unique items (worst case: all items are unique)
 	level.map_trainer.unique_items = (map_trainer_unique_item_t*)gi.TagMalloc(
 		sizeof(map_trainer_unique_item_t) * level.map_trainer.item_count, TAG_LEVEL);
+	if (!level.map_trainer.unique_items)
+	{
+		MapTrainer_FailItemListAlloc("unique item list");
+		return;
+	}
 	level.map_trainer.unique_item_count = 0;
 	
 	// Process each item to build unique list
@@ -458,6 +478,11 @@ void MapTrainer_BuildUniqueItemsList()
 				// Reallocate indices array to fit one more
 				int32_t *new_indices = (int32_t*)gi.TagMalloc(
 					sizeof(int32_t) * (unique_item->instance_count + 1), TAG_LEVEL);
+				if (!new_indices)
+				{
+					TrainerLog("CORE", "TagMalloc failed allocating unique item indices");
+					continue;
+				}
 				
 				// Copy existing indices
 				if (unique_item->item_indices)
@@ -494,6 +519,11 @@ void MapTrainer_BuildUniqueItemsList()
 			
 			// Allocate indices array with first instance
 			unique_item->item_indices = (int32_t*)gi.TagMalloc(sizeof(int32_t), TAG_LEVEL);
+			if (!unique_item->item_indices)
+			{
+				TrainerLog("CORE", "TagMalloc failed allocating first unique item index");
+				continue;
+			}
 			unique_item->item_indices[0] = static_cast<int32_t>(i);
 			unique_item->instance_count = 1;
 			

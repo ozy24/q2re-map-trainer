@@ -188,6 +188,7 @@ void MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player);
 
 // UI
 void MapTrainer_ShowWelcomeMessage(edict_t *player);
+void MapTrainer_ScheduleWelcomeMessage(edict_t *player);
 
 // ==================== TIMING TRAINER API ====================
 

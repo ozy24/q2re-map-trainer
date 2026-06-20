@@ -5,6 +5,14 @@
 #include "trainer.h"
 #include "trainer_config.h"
 #include "trainer_version.h"
+#include "trainer_menu_indices.h"
+
+using trainer_menu::entry_index;
+using trainer_menu::main_entry_t;
+using trainer_menu::path_entry_t;
+using trainer_menu::timing_entry_t;
+using trainer_menu::jump_entry_t;
+using trainer_menu::spawn_entry_t;
 
 // ==================== MENU SYSTEM ====================
 
@@ -102,44 +110,44 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 	pmenu_t *entries = ent->client->menu->entries;
 	
 	// Update toggle display text
-	Q_strlcpy(entries[2].text, G_Fmt("Path Trainer: {}", level.map_trainer.trainer_mode == trainer_mode_t::PATH ? "Enabled" : "Disabled").data(), sizeof(entries[2].text));
+	Q_strlcpy(entries[entry_index(path_entry_t::TOGGLE)].text, G_Fmt("Path Trainer: {}", level.map_trainer.trainer_mode == trainer_mode_t::PATH ? "Enabled" : "Disabled").data(), sizeof(entries[entry_index(path_entry_t::TOGGLE)].text));
 	
 	if (level.map_trainer.trainer_mode == trainer_mode_t::PATH)
 	{
 		// Show item category options when training is enabled
-		Q_strlcpy(entries[3].text, G_Fmt("Weapons: {}", level.map_trainer.weapons_enabled ? "ON" : "OFF").data(), sizeof(entries[3].text));
-		Q_strlcpy(entries[4].text, G_Fmt("Ammo: {}", level.map_trainer.ammo_enabled ? "ON" : "OFF").data(), sizeof(entries[4].text));
-		Q_strlcpy(entries[5].text, G_Fmt("Health: {}", level.map_trainer.health_enabled ? "ON" : "OFF").data(), sizeof(entries[5].text));
-		Q_strlcpy(entries[6].text, G_Fmt("Armor: {}", level.map_trainer.armor_enabled ? "ON" : "OFF").data(), sizeof(entries[6].text));
-		Q_strlcpy(entries[7].text, G_Fmt("Powerups: {}", level.map_trainer.powerups_enabled ? "ON" : "OFF").data(), sizeof(entries[7].text));
-		Q_strlcpy(entries[8].text, G_Fmt("Combine Health Packs: {}", level.map_trainer.combine_health_packs ? "ON" : "OFF").data(), sizeof(entries[8].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::WEAPONS)].text, G_Fmt("Weapons: {}", level.map_trainer.weapons_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::WEAPONS)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::AMMO)].text, G_Fmt("Ammo: {}", level.map_trainer.ammo_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::AMMO)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::HEALTH)].text, G_Fmt("Health: {}", level.map_trainer.health_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::HEALTH)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::ARMOR)].text, G_Fmt("Armor: {}", level.map_trainer.armor_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::ARMOR)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::POWERUPS)].text, G_Fmt("Powerups: {}", level.map_trainer.powerups_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::POWERUPS)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text, G_Fmt("Combine Health Packs: {}", level.map_trainer.combine_health_packs ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text));
 		
 		// Re-enable the function pointers
-		entries[3].SelectFunc = MapTrainer_ToggleWeapons;
-		entries[4].SelectFunc = MapTrainer_ToggleAmmo;
-		entries[5].SelectFunc = MapTrainer_ToggleHealth;
-		entries[6].SelectFunc = MapTrainer_ToggleArmor;
-		entries[7].SelectFunc = MapTrainer_TogglePowerups;
-		entries[8].SelectFunc = MapTrainer_ToggleCombineHealthPacks;
+		entries[entry_index(path_entry_t::WEAPONS)].SelectFunc = MapTrainer_ToggleWeapons;
+		entries[entry_index(path_entry_t::AMMO)].SelectFunc = MapTrainer_ToggleAmmo;
+		entries[entry_index(path_entry_t::HEALTH)].SelectFunc = MapTrainer_ToggleHealth;
+		entries[entry_index(path_entry_t::ARMOR)].SelectFunc = MapTrainer_ToggleArmor;
+		entries[entry_index(path_entry_t::POWERUPS)].SelectFunc = MapTrainer_TogglePowerups;
+		entries[entry_index(path_entry_t::COMBINE_HEALTH)].SelectFunc = MapTrainer_ToggleCombineHealthPacks;
 	}
 	else
 	{
 		// Hide item category options when training is disabled
-		Q_strlcpy(entries[3].text, "", sizeof(entries[3].text));
-		Q_strlcpy(entries[4].text, "", sizeof(entries[4].text));
-		Q_strlcpy(entries[5].text, "", sizeof(entries[5].text));
-		Q_strlcpy(entries[6].text, "", sizeof(entries[6].text));
-		Q_strlcpy(entries[7].text, "", sizeof(entries[7].text));
-		Q_strlcpy(entries[8].text, "", sizeof(entries[8].text));
-		Q_strlcpy(entries[9].text, "", sizeof(entries[9].text)); // Hide the blank line too
+		Q_strlcpy(entries[entry_index(path_entry_t::WEAPONS)].text, "", sizeof(entries[entry_index(path_entry_t::WEAPONS)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::AMMO)].text, "", sizeof(entries[entry_index(path_entry_t::AMMO)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::HEALTH)].text, "", sizeof(entries[entry_index(path_entry_t::HEALTH)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::ARMOR)].text, "", sizeof(entries[entry_index(path_entry_t::ARMOR)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::POWERUPS)].text, "", sizeof(entries[entry_index(path_entry_t::POWERUPS)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text, "", sizeof(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::BLANK2)].text, "", sizeof(entries[entry_index(path_entry_t::BLANK2)].text));
 		
 		// Disable the function pointers
-		entries[3].SelectFunc = nullptr;
-		entries[4].SelectFunc = nullptr;
-		entries[5].SelectFunc = nullptr;
-		entries[6].SelectFunc = nullptr;
-		entries[7].SelectFunc = nullptr;
-		entries[8].SelectFunc = nullptr;
+		entries[entry_index(path_entry_t::WEAPONS)].SelectFunc = nullptr;
+		entries[entry_index(path_entry_t::AMMO)].SelectFunc = nullptr;
+		entries[entry_index(path_entry_t::HEALTH)].SelectFunc = nullptr;
+		entries[entry_index(path_entry_t::ARMOR)].SelectFunc = nullptr;
+		entries[entry_index(path_entry_t::POWERUPS)].SelectFunc = nullptr;
+		entries[entry_index(path_entry_t::COMBINE_HEALTH)].SelectFunc = nullptr;
 	}
 }
 
@@ -267,9 +275,9 @@ void MapTrainer_UpdateItemTimingSubmenu(edict_t *ent)
 	pmenu_t *entries = ent->client->menu->entries;
 	
 	// Update toggle display text
-	Q_strlcpy(entries[2].text, G_Fmt("Timing Trainer: {}", level.map_trainer.trainer_mode == trainer_mode_t::TIMING ? "Enabled" : "Disabled").data(), sizeof(entries[2].text));
-	Q_strlcpy(entries[3].text, G_Fmt("Track: {}", level.map_trainer.timing_major_items_only ? "Major Items" : "All Items").data(), sizeof(entries[3].text));
-	Q_strlcpy(entries[4].text, G_Fmt("Free Collect: {}", level.map_trainer.free_collect_enabled ? "ON" : "OFF").data(), sizeof(entries[4].text));
+	Q_strlcpy(entries[entry_index(timing_entry_t::TOGGLE)].text, G_Fmt("Timing Trainer: {}", level.map_trainer.trainer_mode == trainer_mode_t::TIMING ? "Enabled" : "Disabled").data(), sizeof(entries[entry_index(timing_entry_t::TOGGLE)].text));
+	Q_strlcpy(entries[entry_index(timing_entry_t::TRACK)].text, G_Fmt("Track: {}", level.map_trainer.timing_major_items_only ? "Major Items" : "All Items").data(), sizeof(entries[entry_index(timing_entry_t::TRACK)].text));
+	Q_strlcpy(entries[entry_index(timing_entry_t::FREE_COLLECT)].text, G_Fmt("Free Collect: {}", level.map_trainer.free_collect_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(timing_entry_t::FREE_COLLECT)].text));
 	
 	// Update Timing Challenge display
 	const char* challenge_text = "OFF";
@@ -282,9 +290,9 @@ void MapTrainer_UpdateItemTimingSubmenu(edict_t *ent)
 		case timing_challenge_mode_t::OFF:
 		default:                               challenge_text = "OFF"; break;
 	}
-	Q_strlcpy(entries[5].text, G_Fmt("Challenge: {}", challenge_text).data(), sizeof(entries[5].text));
+	Q_strlcpy(entries[entry_index(timing_entry_t::CHALLENGE)].text, G_Fmt("Challenge: {}", challenge_text).data(), sizeof(entries[entry_index(timing_entry_t::CHALLENGE)].text));
 	
-	Q_strlcpy(entries[6].text, G_Fmt("Debug Prints: {}", level.map_trainer.timing_debug_enabled ? "ON" : "OFF").data(), sizeof(entries[6].text));
+	Q_strlcpy(entries[entry_index(timing_entry_t::DEBUG_PRINTS)].text, G_Fmt("Debug Prints: {}", level.map_trainer.timing_debug_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(timing_entry_t::DEBUG_PRINTS)].text));
 }
 
 pmenu_t maptrainer_itemtiming_submenu[] = {
@@ -339,8 +347,7 @@ void MapTrainer_UpdateJumpTrainerSubmenu(edict_t *ent)
         return;
 
     pmenu_t *entries = ent->client->menu->entries;
-    // entry index 4 is bhop toggle in this submenu
-    Q_strlcpy(entries[4].text, G_Fmt("Bhop Consistency: {}", level.map_trainer.bhop_enabled ? "ON" : "OFF").data(), sizeof(entries[4].text));
+    Q_strlcpy(entries[entry_index(jump_entry_t::BHOP)].text, G_Fmt("Bhop Consistency: {}", level.map_trainer.bhop_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(jump_entry_t::BHOP)].text));
 }
 
 pmenu_t maptrainer_jumptrainer_submenu[] = {
@@ -418,9 +425,9 @@ void MapTrainer_UpdateSpawnTrainerSubmenu(edict_t *ent)
 		return;
 
 	pmenu_t *entries = ent->client->menu->entries;
-	Q_strlcpy(entries[2].text, G_Fmt("Spawn Trainer: {}", level.map_trainer.spawn_trainer_enabled ? "Enabled" : "Disabled").data(), sizeof(entries[2].text));
-	Q_strlcpy(entries[3].text, G_Fmt("Spawn Order: {}", level.map_trainer.spawn_trainer_true_random ? "Random (No Repeat)" : "Vanilla").data(), sizeof(entries[3].text));
-	Q_strlcpy(entries[4].text, G_Fmt("Beacon Beep: {}", level.map_trainer.spawn_trainer_beacon_enabled ? "ON" : "OFF").data(), sizeof(entries[4].text));
+	Q_strlcpy(entries[entry_index(spawn_entry_t::TOGGLE)].text, G_Fmt("Spawn Trainer: {}", level.map_trainer.spawn_trainer_enabled ? "Enabled" : "Disabled").data(), sizeof(entries[entry_index(spawn_entry_t::TOGGLE)].text));
+	Q_strlcpy(entries[entry_index(spawn_entry_t::SPAWN_ORDER)].text, G_Fmt("Spawn Order: {}", level.map_trainer.spawn_trainer_true_random ? "Random (No Repeat)" : "Vanilla").data(), sizeof(entries[entry_index(spawn_entry_t::SPAWN_ORDER)].text));
+	Q_strlcpy(entries[entry_index(spawn_entry_t::BEACON)].text, G_Fmt("Beacon Beep: {}", level.map_trainer.spawn_trainer_beacon_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(spawn_entry_t::BEACON)].text));
 }
 
 pmenu_t maptrainer_spawntrainer_submenu[] = {
@@ -459,8 +466,8 @@ void MapTrainer_UpdateMenu(edict_t *ent)
 		
 	pmenu_t *entries = ent->client->menu->entries;
 
-	// Update speedometer display text (index 7 in the main menu - after adding Spawn Trainer)
-	Q_strlcpy(entries[7].text, G_Fmt("Speedometer: {}", level.map_trainer.speedometer_enabled ? "ON" : "OFF").data(), sizeof(entries[7].text));
+	// Update speedometer display text
+	Q_strlcpy(entries[entry_index(main_entry_t::SPEEDOMETER)].text, G_Fmt("Speedometer: {}", level.map_trainer.speedometer_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(main_entry_t::SPEEDOMETER)].text));
 }
 
 pmenu_t maptrainer_menu[] = {

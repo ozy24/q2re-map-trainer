@@ -19,15 +19,15 @@ namespace {
 	{
 		if (!g_log_initialized)
 		{
-			// Open log file in truncate mode (clear old log)
-			g_trainer_log.open("trainer.log", std::ios::trunc);
+			// Append to trainer.log in the process working directory (see README troubleshooting)
+			g_trainer_log.open("trainer.log", std::ios::app);
 			if (g_trainer_log.is_open())
 			{
 				time_t now = time(nullptr);
 				char timestamp[64];
 				strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
 				g_trainer_log << "==========================================\n";
-				g_trainer_log << "Trainer Debug Log Started: " << timestamp << "\n";
+				g_trainer_log << "Trainer Debug Log Session: " << timestamp << "\n";
 				g_trainer_log << "==========================================\n";
 				g_trainer_log.flush();
 			}
