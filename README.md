@@ -99,6 +99,7 @@ Now you can:
 **Tips:**
 - Disable item types you don't care about (e.g., turn off ammo for faster routes)
 - Use "Combine Health Packs" to treat all health packs as one target
+- Item categories follow the SDK item registry (`IF_WEAPON`, `IF_HEALTH`, etc.); mod items with proper flags respect the matching toggle even if their classname is unconventional
 - Great for learning optimal item collection routes
 
 ### Item Timing Training

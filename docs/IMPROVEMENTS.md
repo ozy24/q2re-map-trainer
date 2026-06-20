@@ -54,8 +54,10 @@ checks `SVF_RESPAWNING`/`solid` directly with no `G_FindByString` scan.
 
 ### 8. Item classification is string-prefix matching **[Addressed]**
 `MapTrainer_IsItemCategoryEnabledForItem` uses `ent->item->flags` (`IF_WEAPON`, `IF_AMMO`, etc.) with
-classname fallback for virtual/combined classes and mod items. Armor names unified across both
-`item_armor_*` and `item_*_armor` conventions.
+classname fallback for virtual/combined classes and mod items without standard flags. Armor names
+unified across both `item_armor_*` and `item_*_armor` conventions. **Behavior change:** custom items
+with e.g. `IF_HEALTH` now follow the Health toggle instead of falling through to the powerups
+classname catch-all. Category filtering runs at `BuildItemList` only (list rebuilt on every toggle).
 
 ---
 

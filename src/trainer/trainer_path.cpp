@@ -13,6 +13,7 @@ bool MapTrainer_IsItemAvailable(int32_t item_index)
 		return false;
 
 	edict_t *ent = level.map_trainer.items[item_index].ent;
+	// Stock items reuse the same edict slot across respawns; list is rebuilt if entities are freed.
 	if (!ent || !ent->inuse)
 		return false;
 
@@ -45,12 +46,7 @@ void MapTrainer_PickNewTarget()
 			continue;
 		}
 		
-		// Check if this item category is enabled
-		if (!MapTrainer_IsItemCategoryEnabled(unique_item->class_name))
-		{
-			continue;
-		}
-		
+		// Category toggles are applied at BuildItemList time (rebuilt on every toggle).
 		// Check if any instance of this item type is available
 		bool has_available_instance = false;
 		for (int32_t j = 0; j < unique_item->instance_count; j++)

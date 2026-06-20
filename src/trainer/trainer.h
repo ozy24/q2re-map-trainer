@@ -37,7 +37,7 @@ struct map_trainer_item_t
 	char friendly_name[64];
 	char class_name[64];
 	vec3_t position;
-	edict_t *ent; // cached map entity; availability checked directly (no G_FindByString)
+	edict_t *ent; // cached at build; stable for stock DM items (respawn toggles SVF_RESPAWNING). Rebuilt each map/toggle.
 };
 
 struct map_trainer_unique_item_t
