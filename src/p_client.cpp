@@ -3277,10 +3277,15 @@ void ClientThink(edict_t *ent, usercmd_t *ucmd)
 	{
 		client->ps.pmove.pm_type = PM_FREEZE;
 		client->ps.pmove.pm_flags &= ~(PMF_JUMP_HELD | PMF_DUCKED);
-		client->ps.pmove.pm_flags |= PMF_ON_GROUND;
+		if (ent->groundentity)
+			client->ps.pmove.pm_flags |= PMF_ON_GROUND;
+		else
+			client->ps.pmove.pm_flags &= ~PMF_ON_GROUND;
 		client->ps.pmove.velocity = vec3_origin;
 		ent->velocity = vec3_origin;
 		client->ps.pmove.viewheight = ent->viewheight = 22;
+		client->buttons = BUTTON_NONE;
+		client->latched_buttons = BUTTON_NONE;
 		return;
 	}
 

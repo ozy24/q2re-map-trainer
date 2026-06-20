@@ -32,27 +32,25 @@ void MapTrainer_PrimeBeacon()
 		spawn_trainer_beacon_sound_index = gi.soundindex(SPAWN_TRAINER_BEACON_SOUND);
 }
 
-void MapTrainer_SnapSpawnTrainerToGround(edict_t *bot)
+bool MapTrainer_SnapSpawnTrainerToGround(edict_t *bot)
 {
 	contents_t mask = G_GetClipMask(bot);
 	vec3_t end = bot->s.origin;
 	end[2] -= 256.0f;
 
 	trace_t tr = gi.trace(bot->s.origin, bot->mins, bot->maxs, end, bot, mask);
-	if (tr.fraction < 1.0f)
-	{
-		bot->s.origin = tr.endpos;
-		bot->client->ps.pmove.origin = tr.endpos;
-		bot->groundentity = tr.ent;
-		bot->groundentity_linkcount = tr.ent ? tr.ent->linkcount : 0;
-		gi.linkentity(bot);
-	}
+	if (tr.fraction >= 1.0f)
+		return false;
 
+	bot->s.origin = tr.endpos;
+	bot->client->ps.pmove.origin = tr.endpos;
+	bot->groundentity = tr.ent;
+	bot->groundentity_linkcount = tr.ent ? tr.ent->linkcount : 0;
 	bot->velocity = vec3_origin;
 	bot->avelocity = vec3_origin;
 	bot->client->ps.pmove.velocity = vec3_origin;
-	bot->client->ps.pmove.pm_flags &= ~(PMF_JUMP_HELD | PMF_DUCKED);
-	bot->client->ps.pmove.pm_flags |= PMF_ON_GROUND;
+	gi.linkentity(bot);
+	return true;
 }
 
 bool MapTrainer_IsSpawnTrainerClient(const edict_t *ent)
@@ -175,11 +173,6 @@ bool MapTrainer_HandleSpawnTrainerBot(edict_t *bot)
 		bot->client->latched_buttons |= BUTTON_ATTACK;
 		return true;
 	}
-
-	MapTrainer_SnapSpawnTrainerToGround(bot);
-	bot->client->buttons = BUTTON_NONE;
-	bot->client->latched_buttons = BUTTON_NONE;
-	bot->client->ps.pmove.pm_type = PM_FREEZE;
 
 	if (level.map_trainer.spawn_trainer_beacon_enabled)
 	{
