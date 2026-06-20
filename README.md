@@ -17,7 +17,7 @@ Guides you through items on the map in a randomized sequence. Perfect for learni
 Provides precise feedback on your item respawn timing accuracy.
 
 - Tracks armor, weapons, powerups, and megahealth
-- Shows if you were early or late (in seconds/frames)
+- Shows if you were early or late (in seconds)
 - Special megahealth handling (accounts for decay time)
 - Perfect for competitive duel practice
 
@@ -26,12 +26,14 @@ Practice movement mechanics and difficult jumps.
 
 - **Save/Load Position**: Save spawn points for jump practice
 - **Bhop Consistency**: Get real-time feedback on bunny hop timing
-- **Speedometer**: Track your movement speed
+
+### 📊 **Speedometer**
+Track your horizontal movement speed from the main menu — useful for strafe jumping and route optimization.
 
 ### 🎲 **Spawn Trainer**
 Learn spawn point locations and practice spawn awareness.
 
-- **Spawn Bot**: Creates a bot that respawns at different spawn points
+- **Spawn Bot**: Passive frozen marker that respawns at different spawn points (beacon only — does not fight)
 - **Spawn Order**: Choose between vanilla spawn order or random (no repeat)
 - **Beacon Beep**: Audio cue to help locate spawn points
 - Perfect for learning spawn locations and practicing spawn awareness
@@ -77,7 +79,7 @@ Learn spawn point locations and practice spawn awareness.
 After installation, run `game maptrain` in the console before loading a map.
 
 ### Opening the Menu
-Press **TAB** to open the trainer menu (or type `maptrainer` in console).
+Type `maptrainer` in the console (`~`) to open the trainer menu.
 
 ---
 
@@ -85,12 +87,12 @@ Press **TAB** to open the trainer menu (or type `maptrainer` in console).
 
 ### Item Path Training
 
-1. Open the menu (TAB)
+1. Open the menu (`maptrainer`)
 2. Select **"Item Path Trainer"**
-3. Enable **"Path Trainer: OFF"** (toggles to ON)
+3. Enable **"Path Trainer: Disabled"** (toggles to Enabled)
 4. Configure item categories (weapons, health, armor, etc.)
 5. Close menu and play
-6. Pick up the highlighted item, then go to the next one shown
+6. Pick up the item named on screen, then go to the next one shown
 
 **Tips:**
 - Disable item types you don't care about (e.g., turn off ammo for faster routes)
@@ -100,7 +102,7 @@ Press **TAB** to open the trainer menu (or type `maptrainer` in console).
 
 ### Item Timing Training
 
-1. Open the menu (TAB)
+1. Open the menu (`maptrainer`)
 2. Select **"Item Timing Trainer"**  
 3. Enable **"Timing Trainer: Disabled"** (toggles to Enabled)
 4. Close menu and play
@@ -111,6 +113,8 @@ Press **TAB** to open the trainer menu (or type `maptrainer` in console).
 **Tips:**
 - **Positive numbers** = late (item already spawned)
 - **Negative numbers** = early (item hasn't spawned yet)
+- **Track**: Toggle **"Track: Major Items"** vs **"All Items"** (major = RL/RG/CG, armors, megahealth, quad)
+- **Challenge**: Optional difficulty windows — Easy (±8s), Medium (±5s), Hard (±3s), Pro (±1s); shows SUCCESS/FAILED within the window instead of raw offset alone
 - Enable "Free Collect" to pick up armor even when at max (for easier practice)
 - Enable "Debug Prints" for detailed timing information
 
@@ -118,8 +122,8 @@ Press **TAB** to open the trainer menu (or type `maptrainer` in console).
 
 ### Jump Trainer / Bhop Practice
 
-1. Open the menu (TAB)
-2. Select **"Item Jump Trainer"**
+1. Open the menu (`maptrainer`)
+2. Select **"Jump Trainer"**
 3. Enable features you want:
    - **Save/Load Position**: Practice specific jumps repeatedly
    - **Bhop Consistency**: Get feedback on your bunny hop timing
@@ -140,7 +144,7 @@ Enable from the main menu to see your horizontal movement speed in real-time. Gr
 
 ### Spawn Trainer
 
-1. Open the menu (TAB)
+1. Open the menu (`maptrainer`)
 2. Select **"Spawn Trainer"**
 3. Enable **"Spawn Trainer: Disabled"** (toggles to Enabled)
 4. A bot will spawn and respawn at different spawn points on the map
@@ -152,7 +156,7 @@ Enable from the main menu to see your horizontal movement speed in real-time. Gr
 - Use "Random (No Repeat)" to experience all spawn points on a map
 - Enable beacon beep to hear where the bot spawns
 - Great for learning spawn locations and practicing spawn awareness in duels
-- The bot will automatically respawn when killed
+- The bot is a passive spawn marker (frozen in place, beacon only) and will automatically respawn when killed
 
 **Player slot:** Spawn Trainer connects as a real client (`"Spawn Trainer"`) and uses one `maxclients` slot. On a full server it may fail to enable; solo or listen-server practice with a spare slot is recommended. The bot still appears on the scoreboard, but killing it does **not** change DM frag counts.
 
@@ -198,9 +202,6 @@ These are written automatically when you change options in the trainer menu. The
 
 ---
 
-
----
-
 ## 🗺️ Supported Maps
 
 **All Quake 2 maps are supported!** The trainer automatically detects items from the map at runtime - no conversion or setup required.
@@ -218,7 +219,7 @@ Works with:
 ### Menu won't open
 - Make sure you ran `game maptrain` in the console after launching
 - Make sure you're in a multiplayer map (deathmatch mode)
-- Try typing `maptrainer` in the console instead of TAB
+- Open the console (`~`) and type `maptrainer`
 
 ### Path training shows "No items found"
 - Make sure you're on a deathmatch map (not single-player)
@@ -268,6 +269,7 @@ Shows detailed debug information about timing calculations. Use this if you want
 
 - `build.bat` — builds `dist/game_x64.dll` and `dist/trainer_tests_x64.exe`
 - `test.bat` — build + run host unit tests for `trainer_logic` (no engine; same tests run in CI)
+- `play.bat` — copies `dist/game_x64.dll` into `baseq2/` for local dev testing (edit paths inside the script; release installs use the `maptrain` mod folder instead)
 
 ---
 
@@ -286,6 +288,7 @@ Copyright (c) ZeniMax Media Inc.
 
 ### v1.2.1 (2026-06-20)
 - **Spawn Trainer bot placement** — bot stands on spawn points instead of hovering in a jump pose; ground snap runs after final spawn placement and is limited to 32 units so raised spawn platforms are not bypassed to the floor beneath
+- **Documentation** — README install/usage corrected for the `maptrain` mod folder, `maptrainer` console command, menu labels, and timing challenge behavior
 
 ### v1.2.0 (2026-06-20)
 - **Settings persist across game restarts** — archived `trainer_*` cvars restore menu options after exit/relaunch (map-change persistence from v1.1.0 unchanged)

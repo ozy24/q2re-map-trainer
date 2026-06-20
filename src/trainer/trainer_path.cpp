@@ -225,7 +225,7 @@ void MapTrainer_ShowWelcomeMessage(edict_t *player)
 	}
 	else
 	{
-		gi.LocClient_Print(player, PRINT_CENTER, "Welcome to the Q2RE Map Trainer.\nPress Tab to open the training menu.");
+		gi.LocClient_Print(player, PRINT_CENTER, "Welcome to the Q2RE Map Trainer.\nType maptrainer in the console to open the menu.");
 	}
 }
 
