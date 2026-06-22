@@ -691,7 +691,7 @@ bool Pickup_Health(edict_t *ent, edict_t *other)
 	int count = ent->count ? ent->count : ent->item->quantity;
 
 	// ZOID
-	if (deathmatch->integer && other->health >= 250 && count > 25)
+	if (deathmatch->integer && other->health >= 250 && count > 25 && !path_training_enabled)
 		return false;
 	// ZOID
 
@@ -826,11 +826,12 @@ bool Pickup_Armor(edict_t *ent, edict_t *other)
 				newcount = oldinfo->max_count;
 
 			// if we're already maxed out then we don't need the new armor
-			// Map Trainer: Allow target armor items to be picked up even when maxed out
+			// Map Trainer: Allow armor pickup during path training (incl. first pickup before a target is set)
 			bool is_map_trainer_target = level.map_trainer.initialized && MapTrainer_IsTargetItem(ent);
-			// Map Trainer: Allow pickup if free collect is enabled
+			bool path_training_enabled = level.map_trainer.trainer_mode == trainer_mode_t::PATH && level.map_trainer.initialized;
+			// Map Trainer: Allow pickup if free collect is enabled (timing trainer)
 			bool free_collect_allowed = level.map_trainer.trainer_mode == trainer_mode_t::TIMING && level.map_trainer.free_collect_enabled;
-			if (other->client->pers.inventory[old_armor_index] >= newcount && !is_map_trainer_target && !free_collect_allowed)
+			if (other->client->pers.inventory[old_armor_index] >= newcount && !is_map_trainer_target && !path_training_enabled && !free_collect_allowed)
 				return false;
 
 			// update current armor value

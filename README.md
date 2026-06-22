@@ -52,7 +52,7 @@ Learn spawn point locations and practice spawn awareness.
 
 ## 📥 Installation
 
-1. **Download** the latest release zip from [GitHub Releases](https://github.com/ozy24/q2re-map-trainer/releases) (e.g. `q2re_map_trainer_v1.2.1.zip`)
+1. **Download** the latest release zip from [GitHub Releases](https://github.com/ozy24/q2re-map-trainer/releases) (e.g. `q2re_map_trainer_v1.2.2.zip`)
 2. **Extract** the zip — it contains a `maptrain` folder with `game_x64.dll`
 3. **Copy** the `maptrain` folder into your Quake 2 `baseq2` directory:
    ```
@@ -276,7 +276,7 @@ Shows detailed debug information about timing calculations. Use this if you want
 ## 🙏 Credits
 
 **Created by**: ozy  
-**Version**: v1.2.1  
+**Version**: v1.2.2  
 **Architecture**: "Thin vanilla" design - minimal changes to base game code  
 
 Built with the Quake 2 Rerelease SDK  
@@ -285,6 +285,9 @@ Copyright (c) ZeniMax Media Inc.
 ---
 
 ## 📝 Changelog
+
+### v1.2.2 (2026-06-22)
+- **Item Path Training** — health and armor destinations can be collected at max health/armor so routes are not blocked mid-training
 
 ### v1.2.1 (2026-06-20)
 - **Spawn Trainer bot placement** — bot stands on spawn points instead of hovering in a jump pose; ground snap runs after final spawn placement and is limited to 32 units so raised spawn platforms are not bypassed to the floor beneath
