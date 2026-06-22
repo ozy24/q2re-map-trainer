@@ -16,6 +16,8 @@ cvar_t *trainer_powerups;
 cvar_t *trainer_speedometer;
 cvar_t *trainer_mode;
 cvar_t *trainer_combine_health;
+cvar_t *trainer_path_stimpacks;
+cvar_t *trainer_path_armor_shards;
 cvar_t *trainer_free_collect;
 cvar_t *trainer_timing_major_only;
 cvar_t *trainer_timing_challenge;
@@ -45,6 +47,8 @@ void MapTrainer_RegisterCvars()
 	trainer_speedometer = gi.cvar("trainer_speedometer", "1", CVAR_ARCHIVE);
 	trainer_mode = gi.cvar("trainer_mode", "0", CVAR_ARCHIVE);
 	trainer_combine_health = gi.cvar("trainer_combine_health", "0", CVAR_ARCHIVE);
+	trainer_path_stimpacks = gi.cvar("trainer_path_stimpacks", "1", CVAR_ARCHIVE);
+	trainer_path_armor_shards = gi.cvar("trainer_path_armor_shards", "1", CVAR_ARCHIVE);
 	trainer_free_collect = gi.cvar("trainer_free_collect", "1", CVAR_ARCHIVE);
 	trainer_timing_major_only = gi.cvar("trainer_timing_major_only", "1", CVAR_ARCHIVE);
 	trainer_timing_challenge = gi.cvar("trainer_timing_challenge", "0", CVAR_ARCHIVE);
@@ -64,6 +68,8 @@ void MapTrainer_LoadFromCvars()
 	level.map_trainer.speedometer_enabled = CvarToBool(trainer_speedometer);
 	level.map_trainer.trainer_mode = static_cast<trainer_mode_t>(trainer_mode ? trainer_mode->integer : 0);
 	level.map_trainer.combine_health_packs = CvarToBool(trainer_combine_health);
+	level.map_trainer.path_stimpacks_enabled = CvarToBool(trainer_path_stimpacks);
+	level.map_trainer.path_armor_shards_enabled = CvarToBool(trainer_path_armor_shards);
 	level.map_trainer.free_collect_enabled = CvarToBool(trainer_free_collect);
 	level.map_trainer.timing_major_items_only = CvarToBool(trainer_timing_major_only);
 	level.map_trainer.timing_challenge_mode = static_cast<timing_challenge_mode_t>(
@@ -93,6 +99,8 @@ void MapTrainer_WriteCvars()
 	CvarSetBool("trainer_speedometer", level.map_trainer.speedometer_enabled);
 	gi.cvar_set("trainer_mode", G_Fmt("{}", static_cast<int32_t>(level.map_trainer.trainer_mode)).data());
 	CvarSetBool("trainer_combine_health", level.map_trainer.combine_health_packs);
+	CvarSetBool("trainer_path_stimpacks", level.map_trainer.path_stimpacks_enabled);
+	CvarSetBool("trainer_path_armor_shards", level.map_trainer.path_armor_shards_enabled);
 	CvarSetBool("trainer_free_collect", level.map_trainer.free_collect_enabled);
 	CvarSetBool("trainer_timing_major_only", level.map_trainer.timing_major_items_only);
 	gi.cvar_set("trainer_timing_challenge",

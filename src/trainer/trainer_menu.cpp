@@ -102,6 +102,22 @@ void MapTrainer_ToggleCombineHealthPacks(edict_t *ent, pmenuhnd_t *p)
 	PMenu_Update(ent);
 }
 
+void MapTrainer_TogglePathStimpacks(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.path_stimpacks_enabled = !level.map_trainer.path_stimpacks_enabled;
+	MapTrainer_RestartPathTraining();
+	MapTrainer_SaveConfig();
+	PMenu_Update(ent);
+}
+
+void MapTrainer_TogglePathArmorShards(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.path_armor_shards_enabled = !level.map_trainer.path_armor_shards_enabled;
+	MapTrainer_RestartPathTraining();
+	MapTrainer_SaveConfig();
+	PMenu_Update(ent);
+}
+
 void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 {
 	if (!ent->client->menu)
@@ -121,6 +137,8 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 		Q_strlcpy(entries[entry_index(path_entry_t::ARMOR)].text, G_Fmt("Armor: {}", level.map_trainer.armor_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::ARMOR)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::POWERUPS)].text, G_Fmt("Powerups: {}", level.map_trainer.powerups_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::POWERUPS)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text, G_Fmt("Combine Health Packs: {}", level.map_trainer.combine_health_packs ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::STIMPACKS)].text, G_Fmt("Stimpacks: {}", level.map_trainer.path_stimpacks_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::STIMPACKS)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::ARMOR_SHARDS)].text, G_Fmt("Armor Shards: {}", level.map_trainer.path_armor_shards_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::ARMOR_SHARDS)].text));
 		
 		// Re-enable the function pointers
 		entries[entry_index(path_entry_t::WEAPONS)].SelectFunc = MapTrainer_ToggleWeapons;
@@ -129,6 +147,8 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 		entries[entry_index(path_entry_t::ARMOR)].SelectFunc = MapTrainer_ToggleArmor;
 		entries[entry_index(path_entry_t::POWERUPS)].SelectFunc = MapTrainer_TogglePowerups;
 		entries[entry_index(path_entry_t::COMBINE_HEALTH)].SelectFunc = MapTrainer_ToggleCombineHealthPacks;
+		entries[entry_index(path_entry_t::STIMPACKS)].SelectFunc = MapTrainer_TogglePathStimpacks;
+		entries[entry_index(path_entry_t::ARMOR_SHARDS)].SelectFunc = MapTrainer_TogglePathArmorShards;
 	}
 	else
 	{
@@ -139,6 +159,8 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 		Q_strlcpy(entries[entry_index(path_entry_t::ARMOR)].text, "", sizeof(entries[entry_index(path_entry_t::ARMOR)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::POWERUPS)].text, "", sizeof(entries[entry_index(path_entry_t::POWERUPS)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text, "", sizeof(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::STIMPACKS)].text, "", sizeof(entries[entry_index(path_entry_t::STIMPACKS)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::ARMOR_SHARDS)].text, "", sizeof(entries[entry_index(path_entry_t::ARMOR_SHARDS)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::BLANK2)].text, "", sizeof(entries[entry_index(path_entry_t::BLANK2)].text));
 		
 		// Disable the function pointers
@@ -148,6 +170,8 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 		entries[entry_index(path_entry_t::ARMOR)].SelectFunc = nullptr;
 		entries[entry_index(path_entry_t::POWERUPS)].SelectFunc = nullptr;
 		entries[entry_index(path_entry_t::COMBINE_HEALTH)].SelectFunc = nullptr;
+		entries[entry_index(path_entry_t::STIMPACKS)].SelectFunc = nullptr;
+		entries[entry_index(path_entry_t::ARMOR_SHARDS)].SelectFunc = nullptr;
 	}
 }
 
@@ -160,7 +184,9 @@ pmenu_t maptrainer_itempathing_submenu[] = {
 	{ "Health: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleHealth },
 	{ "Armor: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleArmor },
 	{ "Powerups: ON", PMENU_ALIGN_LEFT, MapTrainer_TogglePowerups },
-			{ "Combine Health Packs: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleCombineHealthPacks },
+	{ "Combine Health Packs: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleCombineHealthPacks },
+	{ "Stimpacks: ON", PMENU_ALIGN_LEFT, MapTrainer_TogglePathStimpacks },
+	{ "Armor Shards: ON", PMENU_ALIGN_LEFT, MapTrainer_TogglePathArmorShards },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },

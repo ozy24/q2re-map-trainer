@@ -142,10 +142,26 @@ void test_path_target_skip()
 		"no previous type never skipped");
 }
 
+void test_path_item_inclusion()
+{
+	expect_true(trainer_logic::IsPathTrainingItemIncluded("item_health_small", true, true),
+		"stimpack included when enabled");
+	expect_false(trainer_logic::IsPathTrainingItemIncluded("item_health_small", false, true),
+		"stimpack excluded when disabled");
+	expect_true(trainer_logic::IsPathTrainingItemIncluded("item_armor_shard", true, true),
+		"shard included when enabled");
+	expect_false(trainer_logic::IsPathTrainingItemIncluded("item_armor_shard", true, false),
+		"shard excluded when disabled");
+	expect_true(trainer_logic::IsPathTrainingItemIncluded("item_armor_body", false, false),
+		"other items unaffected by path toggles");
+	expect_true(trainer_logic::IsPathTrainingItemIncluded("item_health", false, false),
+		"med health unaffected by stimpack toggle");
+}
+
 void test_version_constants()
 {
-	expect_str_eq(TRAINER_VERSION_STRING, "1.2.2", "version string");
-	expect_true(TRAINER_VERSION_MAJOR == 1 && TRAINER_VERSION_MINOR == 2 && TRAINER_VERSION_PATCH == 2,
+	expect_str_eq(TRAINER_VERSION_STRING, "1.2.3", "version string");
+	expect_true(TRAINER_VERSION_MAJOR == 1 && TRAINER_VERSION_MINOR == 2 && TRAINER_VERSION_PATCH == 3,
 		"version components");
 }
 } // namespace
@@ -159,6 +175,7 @@ int main()
 	test_friendly_name_from_pickup();
 	test_timing_challenge();
 	test_path_target_skip();
+	test_path_item_inclusion();
 	test_version_constants();
 
 	if (g_failures == 0)

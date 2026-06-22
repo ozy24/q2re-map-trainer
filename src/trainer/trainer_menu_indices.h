@@ -38,6 +38,8 @@ enum class path_entry_t : int32_t
 	ARMOR,
 	POWERUPS,
 	COMBINE_HEALTH,
+	STIMPACKS,
+	ARMOR_SHARDS,
 	BLANK2,
 	BACK,
 	BLANK3,

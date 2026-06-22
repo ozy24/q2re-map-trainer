@@ -76,6 +76,9 @@ struct map_trainer_t
 	trainer_mode_t trainer_mode;
 	// Combine health packs toggle
 	bool combine_health_packs;
+	// Path training: include stimpacks / armor shards as targets
+	bool path_stimpacks_enabled;
+	bool path_armor_shards_enabled;
 	// Free collect toggle - allows picking up armor even at max
 	bool free_collect_enabled;
 	// Debug prints toggle for timing trainer
@@ -134,6 +137,8 @@ struct map_trainer_config_t
 	bool speedometer_enabled;
 	trainer_mode_t trainer_mode;
 	bool combine_health_packs;
+	bool path_stimpacks_enabled;
+	bool path_armor_shards_enabled;
 	bool free_collect_enabled;
 	bool timing_debug_enabled;
 	bool timing_major_items_only;

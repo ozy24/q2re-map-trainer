@@ -188,6 +188,8 @@ void MapTrainer_SaveConfig()
 	cfg.speedometer_enabled = level.map_trainer.speedometer_enabled;
 	cfg.trainer_mode = level.map_trainer.trainer_mode;
 	cfg.combine_health_packs = level.map_trainer.combine_health_packs;
+	cfg.path_stimpacks_enabled = level.map_trainer.path_stimpacks_enabled;
+	cfg.path_armor_shards_enabled = level.map_trainer.path_armor_shards_enabled;
 	cfg.free_collect_enabled = level.map_trainer.free_collect_enabled;
 	cfg.timing_debug_enabled = level.map_trainer.timing_debug_enabled;
 	cfg.timing_major_items_only = level.map_trainer.timing_major_items_only;
@@ -215,6 +217,8 @@ void MapTrainer_LoadConfig()
 	level.map_trainer.speedometer_enabled = cfg.speedometer_enabled;
 	level.map_trainer.trainer_mode = cfg.trainer_mode;
 	level.map_trainer.combine_health_packs = cfg.combine_health_packs;
+	level.map_trainer.path_stimpacks_enabled = cfg.path_stimpacks_enabled;
+	level.map_trainer.path_armor_shards_enabled = cfg.path_armor_shards_enabled;
 	level.map_trainer.free_collect_enabled = cfg.free_collect_enabled;
 	level.map_trainer.timing_debug_enabled = cfg.timing_debug_enabled;
 	level.map_trainer.timing_major_items_only = cfg.timing_major_items_only;
@@ -320,6 +324,10 @@ void MapTrainer_BuildItemList(const char *mapname)
 
 		// Only include items in enabled categories (item registry flags, classname fallback)
 		if (!MapTrainer_IsItemCategoryEnabledForItem(ent->item))
+			continue;
+
+		if (!trainer_logic::IsPathTrainingItemIncluded(ent->classname,
+			level.map_trainer.path_stimpacks_enabled, level.map_trainer.path_armor_shards_enabled))
 			continue;
 
 		// Get friendly name from the actual item definition that the game uses

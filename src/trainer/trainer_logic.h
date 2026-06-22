@@ -44,4 +44,6 @@ timing_challenge_result_t EvaluateTimingChallenge(float time_diff_sec, int32_t c
 
 bool ShouldSkipUniqueTypeForPick(int32_t unique_item_count, const char *unique_class_name,
 	const char *previous_normalized_class_name);
+
+bool IsPathTrainingItemIncluded(const char *class_name, bool stimpacks_enabled, bool armor_shards_enabled);
 } // namespace trainer_logic

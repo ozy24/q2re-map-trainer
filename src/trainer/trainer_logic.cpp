@@ -201,4 +201,18 @@ bool ShouldSkipUniqueTypeForPick(int32_t unique_item_count, const char *unique_c
 
 	return str_icmp(unique_class_name, previous_normalized_class_name) == 0;
 }
+
+bool IsPathTrainingItemIncluded(const char *class_name, bool stimpacks_enabled, bool armor_shards_enabled)
+{
+	if (!class_name)
+		return true;
+
+	if (str_icmp(class_name, "item_health_small") == 0)
+		return stimpacks_enabled;
+
+	if (str_icmp(class_name, "item_armor_shard") == 0)
+		return armor_shards_enabled;
+
+	return true;
+}
 } // namespace trainer_logic

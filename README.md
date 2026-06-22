@@ -52,7 +52,7 @@ Learn spawn point locations and practice spawn awareness.
 
 ## 📥 Installation
 
-1. **Download** the latest release zip from [GitHub Releases](https://github.com/ozy24/q2re-map-trainer/releases) (e.g. `q2re_map_trainer_v1.2.2.zip`)
+1. **Download** the latest release zip from [GitHub Releases](https://github.com/ozy24/q2re-map-trainer/releases) (e.g. `q2re_map_trainer_v1.2.3.zip`)
 2. **Extract** the zip — it contains a `maptrain` folder with `game_x64.dll`
 3. **Copy** the `maptrain` folder into your Quake 2 `baseq2` directory:
    ```
@@ -276,7 +276,7 @@ Shows detailed debug information about timing calculations. Use this if you want
 ## 🙏 Credits
 
 **Created by**: ozy  
-**Version**: v1.2.2  
+**Version**: v1.2.3  
 **Architecture**: "Thin vanilla" design - minimal changes to base game code  
 
 Built with the Quake 2 Rerelease SDK  
@@ -286,12 +286,15 @@ Copyright (c) ZeniMax Media Inc.
 
 ## 📝 Changelog
 
+### v1.2.3 (2026-06-22)
+- **Item Path Training** — optional Stimpacks and Armor Shards toggles to exclude minor pickups from path targets
+
 ### v1.2.2 (2026-06-22)
 - **Item Path Training** — health and armor destinations can be collected at max health/armor so routes are not blocked mid-training
+- **Documentation** — README install/usage corrected for the `maptrain` mod folder, `maptrainer` console command, menu labels, and timing challenge behavior
 
 ### v1.2.1 (2026-06-20)
 - **Spawn Trainer bot placement** — bot stands on spawn points instead of hovering in a jump pose; ground snap runs after final spawn placement and is limited to 32 units so raised spawn platforms are not bypassed to the floor beneath
-- **Documentation** — README install/usage corrected for the `maptrain` mod folder, `maptrainer` console command, menu labels, and timing challenge behavior
 
 ### v1.2.0 (2026-06-20)
 - **Settings persist across game restarts** — archived `trainer_*` cvars restore menu options after exit/relaunch (map-change persistence from v1.1.0 unchanged)
@@ -306,7 +309,6 @@ Copyright (c) ZeniMax Media Inc.
 - **Settings now persist across map changes** — trainer configuration is retained when the map changes, and active trainers auto-resume on the new map (path training rebuilds the new map's item list, the spawn bot re-spawns, timings start fresh)
 - Build environment overhaul — vcpkg is now a git submodule with a `setup-vcpkg.ps1` bootstrap; `build.bat`/`play.bat` moved to the repo root (build and deploy are separate steps)
 - Consolidated version constants into `src/trainer/trainer_version.h` (single source of truth, alongside the repo-root `VERSION` file)
-- Version bump to 1.1.0
 
 ### v0.94 beta
 - Various bug and stability fixes
