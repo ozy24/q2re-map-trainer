@@ -14,15 +14,15 @@ enum class main_entry_t : int32_t
 	BLANK1,
 	PATH_TRAINER,
 	TIMING_TRAINER,
+	GHOST_DUEL,
 	JUMP_TRAINER,
 	SPAWN_TRAINER,
 	BLANK2,
 	SPEEDOMETER,
 	BLANK3,
 	BLANK4,
-	BLANK5,
 	CLOSE,
-	BLANK6,
+	BLANK5,
 	FOOTER,
 	VERSION
 };
@@ -65,6 +65,26 @@ enum class timing_entry_t : int32_t
 	VERSION
 };
 
+enum class ghost_entry_t : int32_t
+{
+	HEADER = 0,
+	BLANK1,
+	TOGGLE,
+	TIMINGS,
+	SKILL,
+	BODY,
+	ADAPTIVE,
+	HUD_LEVEL,
+	SILENT,
+	BLANK2,
+	STATUS,
+	BLANK3,
+	BACK,
+	BLANK4,
+	FOOTER,
+	VERSION
+};
+
 enum class jump_entry_t : int32_t
 {
 	HEADER = 0,
@@ -101,6 +121,7 @@ enum class spawn_entry_t : int32_t
 constexpr int32_t entry_index(main_entry_t e) { return static_cast<int32_t>(e); }
 constexpr int32_t entry_index(path_entry_t e) { return static_cast<int32_t>(e); }
 constexpr int32_t entry_index(timing_entry_t e) { return static_cast<int32_t>(e); }
+constexpr int32_t entry_index(ghost_entry_t e) { return static_cast<int32_t>(e); }
 constexpr int32_t entry_index(jump_entry_t e) { return static_cast<int32_t>(e); }
 constexpr int32_t entry_index(spawn_entry_t e) { return static_cast<int32_t>(e); }
 } // namespace trainer_menu

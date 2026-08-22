@@ -3949,6 +3949,9 @@ void ClientBeginServerFrame(edict_t *ent)
 	
 	// Map Trainer: Check megahealth timing if enabled
 	MapTrainer_CheckMegahealthTiming(ent);
+
+	// [Map Trainer] Pack the Ghost Duel HUD payload into this player's stats
+	MapTrainer_UpdateHudStats(ent);
 }
 /*
 ==============

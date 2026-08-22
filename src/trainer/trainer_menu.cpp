@@ -6,11 +6,13 @@
 #include "trainer_config.h"
 #include "trainer_version.h"
 #include "trainer_menu_indices.h"
+#include "trainer_logic.h"
 
 using trainer_menu::entry_index;
 using trainer_menu::main_entry_t;
 using trainer_menu::path_entry_t;
 using trainer_menu::timing_entry_t;
+using trainer_menu::ghost_entry_t;
 using trainer_menu::jump_entry_t;
 using trainer_menu::spawn_entry_t;
 
@@ -23,7 +25,7 @@ void MapTrainer_MenuClose(edict_t *ent, pmenuhnd_t *p)
 
 void MapTrainer_RestartPathTraining()
 {
-	if (level.map_trainer.trainer_mode == trainer_mode_t::PATH)
+	if (MapTrainer_IsModeActive(trainer_mode_t::PATH))
 	{
 		// Rebuild the item list with new category settings
 		MapTrainer_BuildItemList(level.mapname);
@@ -86,10 +88,7 @@ void MapTrainer_ToggleSpeedometer(edict_t *ent, pmenuhnd_t *p)
 
 void MapTrainer_ToggleTraining(edict_t *ent, pmenuhnd_t *p)
 {
-	if (level.map_trainer.trainer_mode == trainer_mode_t::PATH)
-		MapTrainer_SetMode(trainer_mode_t::OFF, ent);
-	else
-		MapTrainer_SetMode(trainer_mode_t::PATH, ent);
+	MapTrainer_SetModeFlag(trainer_mode_t::PATH, !MapTrainer_IsModeActive(trainer_mode_t::PATH), ent);
 
 	PMenu_Update(ent);
 }
@@ -126,9 +125,9 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 	pmenu_t *entries = ent->client->menu->entries;
 	
 	// Update toggle display text
-	Q_strlcpy(entries[entry_index(path_entry_t::TOGGLE)].text, G_Fmt("Path Trainer: {}", level.map_trainer.trainer_mode == trainer_mode_t::PATH ? "Enabled" : "Disabled").data(), sizeof(entries[entry_index(path_entry_t::TOGGLE)].text));
+	Q_strlcpy(entries[entry_index(path_entry_t::TOGGLE)].text, G_Fmt("Path Trainer: {}", MapTrainer_IsModeActive(trainer_mode_t::PATH) ? "Enabled" : "Disabled").data(), sizeof(entries[entry_index(path_entry_t::TOGGLE)].text));
 	
-	if (level.map_trainer.trainer_mode == trainer_mode_t::PATH)
+	if (MapTrainer_IsModeActive(trainer_mode_t::PATH))
 	{
 		// Show item category options when training is enabled
 		Q_strlcpy(entries[entry_index(path_entry_t::WEAPONS)].text, G_Fmt("Weapons: {}", level.map_trainer.weapons_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::WEAPONS)].text));
@@ -203,10 +202,7 @@ void MapTrainer_OpenItemPathingSubmenu(edict_t *ent, pmenuhnd_t *p)
 
 void MapTrainer_ToggleTiming(edict_t *ent, pmenuhnd_t *p)
 {
-	if (level.map_trainer.trainer_mode == trainer_mode_t::TIMING)
-		MapTrainer_SetMode(trainer_mode_t::OFF, ent);
-	else
-		MapTrainer_SetMode(trainer_mode_t::TIMING, ent);
+	MapTrainer_SetModeFlag(trainer_mode_t::TIMING, !MapTrainer_IsModeActive(trainer_mode_t::TIMING), ent);
 
 	PMenu_Update(ent);
 }
@@ -301,7 +297,7 @@ void MapTrainer_UpdateItemTimingSubmenu(edict_t *ent)
 	pmenu_t *entries = ent->client->menu->entries;
 	
 	// Update toggle display text
-	Q_strlcpy(entries[entry_index(timing_entry_t::TOGGLE)].text, G_Fmt("Timing Trainer: {}", level.map_trainer.trainer_mode == trainer_mode_t::TIMING ? "Enabled" : "Disabled").data(), sizeof(entries[entry_index(timing_entry_t::TOGGLE)].text));
+	Q_strlcpy(entries[entry_index(timing_entry_t::TOGGLE)].text, G_Fmt("Timing Trainer: {}", MapTrainer_IsModeActive(trainer_mode_t::TIMING) ? "Enabled" : "Disabled").data(), sizeof(entries[entry_index(timing_entry_t::TOGGLE)].text));
 	Q_strlcpy(entries[entry_index(timing_entry_t::TRACK)].text, G_Fmt("Track: {}", level.map_trainer.timing_major_items_only ? "Major Items" : "All Items").data(), sizeof(entries[entry_index(timing_entry_t::TRACK)].text));
 	Q_strlcpy(entries[entry_index(timing_entry_t::FREE_COLLECT)].text, G_Fmt("Free Collect: {}", level.map_trainer.free_collect_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(timing_entry_t::FREE_COLLECT)].text));
 	
@@ -475,6 +471,184 @@ void MapTrainer_OpenSpawnTrainerSubmenu(edict_t *ent, pmenuhnd_t *p)
 	PMenu_Open(ent, maptrainer_spawntrainer_submenu, -1, sizeof(maptrainer_spawntrainer_submenu) / sizeof(pmenu_t), nullptr, MapTrainer_UpdateSpawnTrainerSubmenu);
 }
 
+// ==================== GHOST DUEL MENU ====================
+
+// Names for the arrival-jitter levels. Sloppy is the default: a metronome opponent at
+// Precise wins every contested respawn on tie alone, which reads as an unbeatable bot
+// rather than a fair race. Precise is still available for players who want that.
+static const char *MapTrainer_GhostSkillName(int32_t skill)
+{
+	switch (skill)
+	{
+	case 1: return "Human (+/-1s)";
+	case 2: return "Loose (+/-2s)";
+	case 3: return "Sloppy (+/-4s)";
+	case 0:
+	default: return "Precise";
+	}
+}
+
+void MapTrainer_ToggleGhostDuel(edict_t *ent, pmenuhnd_t *p)
+{
+	MapTrainer_SetGhostEnabled(!level.map_trainer.ghost_enabled, ent);
+	PMenu_Update(ent);
+}
+
+void MapTrainer_ToggleGhostTimings(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.ghost_timings_enabled = !level.map_trainer.ghost_timings_enabled;
+	gi.LocClient_Print(ent, PRINT_HIGH, level.map_trainer.ghost_timings_enabled
+		? "Ghost pickups now start timers - the sound is your only cue."
+		: "Ghost pickups no longer start timers.");
+	MapTrainer_SaveConfig();
+	PMenu_Update(ent);
+}
+
+void MapTrainer_CycleGhostSkill(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.ghost_skill = (level.map_trainer.ghost_skill + 1) % trainer_config::GHOST_SKILL_LEVEL_COUNT;
+	gi.LocClient_Print(ent, PRINT_HIGH,
+		G_Fmt("Ghost skill: {}", MapTrainer_GhostSkillName(level.map_trainer.ghost_skill)).data());
+	MapTrainer_SaveConfig();
+	PMenu_Update(ent);
+}
+
+// The weaning ladder. Start on Full while the cycle is unfamiliar, then take the
+// numbers away, then the names, until only the match clock is left and finally nothing.
+static const char *MapTrainer_HudLevelName(int32_t hud_level)
+{
+	switch (hud_level)
+	{
+	case 1: return "Clock only";
+	case 2: return "Names only";
+	case 3: return "Full";
+	case 0:
+	default: return "Off";
+	}
+}
+
+void MapTrainer_CycleHudLevel(edict_t *ent, pmenuhnd_t *p)
+{
+	// Descending, because the useful direction of travel is toward less help.
+	level.map_trainer.hud_level--;
+	if (level.map_trainer.hud_level < 0)
+		level.map_trainer.hud_level = static_cast<int32_t>(trainer_logic::hud_level_t::FULL);
+
+	gi.LocClient_Print(ent, PRINT_HIGH,
+		G_Fmt("Timing HUD: {}", MapTrainer_HudLevelName(level.map_trainer.hud_level)).data());
+	MapTrainer_SaveConfig();
+	PMenu_Update(ent);
+}
+
+// Same weaning shape as the timing HUD: see it through walls while you learn its routes,
+// then drop to realistic glimpses, then nothing.
+static const char *MapTrainer_GhostBodyName(int32_t body_level)
+{
+	switch (body_level)
+	{
+	case trainer_config::GHOST_BODY_LEVEL_LINE_OF_SIGHT: return "Line of sight";
+	case trainer_config::GHOST_BODY_LEVEL_SEE_THROUGH: return "Through walls";
+	case trainer_config::GHOST_BODY_LEVEL_OFF:
+	default: return "Off";
+	}
+}
+
+void MapTrainer_CycleGhostBody(edict_t *ent, pmenuhnd_t *p)
+{
+	// Descending, because the useful direction of travel is toward less help.
+	level.map_trainer.ghost_body_level--;
+	if (level.map_trainer.ghost_body_level < 0)
+		level.map_trainer.ghost_body_level = trainer_config::GHOST_BODY_LEVEL_MAX;
+
+	// Apply immediately rather than waiting for the next ghost frame, so the body appears
+	// or vanishes the instant the row is selected.
+	MapTrainer_GhostUpdateBody();
+
+	gi.LocClient_Print(ent, PRINT_HIGH,
+		G_Fmt("Ghost body: {}", MapTrainer_GhostBodyName(level.map_trainer.ghost_body_level)).data());
+	MapTrainer_SaveConfig();
+	PMenu_Update(ent);
+}
+
+void MapTrainer_ToggleGhostAdaptive(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.ghost_adaptive = !level.map_trainer.ghost_adaptive;
+	gi.LocClient_Print(ent, PRINT_HIGH, level.map_trainer.ghost_adaptive
+		? "Ghost now plays the control game: camps when winning, avoids you when losing."
+		: "Ghost always runs the optimal item cycle.");
+	MapTrainer_SaveConfig();
+	PMenu_Update(ent);
+}
+
+void MapTrainer_ToggleSilentFeedback(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.silent_feedback = !level.map_trainer.silent_feedback;
+	gi.LocClient_Print(ent, PRINT_HIGH, level.map_trainer.silent_feedback
+		? "Silent mode ON - no per-attempt readout. Check yourself; results at match end."
+		: "Silent mode OFF - per-attempt readout restored.");
+	MapTrainer_SaveConfig();
+	PMenu_Update(ent);
+}
+
+void MapTrainer_UpdateGhostDuelSubmenu(edict_t *ent)
+{
+	if (!ent->client || !ent->client->menu)
+		return;
+
+	pmenu_t *entries = ent->client->menu->entries;
+	const map_trainer_ghost_t &ghost = level.map_trainer.ghost;
+
+	Q_strlcpy(entries[entry_index(ghost_entry_t::TOGGLE)].text,
+		G_Fmt("Ghost Duel: {}", level.map_trainer.ghost_enabled ? "Enabled" : "Disabled").data(),
+		sizeof(entries[entry_index(ghost_entry_t::TOGGLE)].text));
+	Q_strlcpy(entries[entry_index(ghost_entry_t::TIMINGS)].text,
+		G_Fmt("Ghost Starts Timers: {}", level.map_trainer.ghost_timings_enabled ? "ON" : "OFF").data(),
+		sizeof(entries[entry_index(ghost_entry_t::TIMINGS)].text));
+	Q_strlcpy(entries[entry_index(ghost_entry_t::SKILL)].text,
+		G_Fmt("Ghost Skill: {}", MapTrainer_GhostSkillName(level.map_trainer.ghost_skill)).data(),
+		sizeof(entries[entry_index(ghost_entry_t::SKILL)].text));
+	Q_strlcpy(entries[entry_index(ghost_entry_t::BODY)].text,
+		G_Fmt("Ghost Body: {}", MapTrainer_GhostBodyName(level.map_trainer.ghost_body_level)).data(),
+		sizeof(entries[entry_index(ghost_entry_t::BODY)].text));
+	Q_strlcpy(entries[entry_index(ghost_entry_t::ADAPTIVE)].text,
+		G_Fmt("Plays The Control Game: {}", level.map_trainer.ghost_adaptive ? "ON" : "OFF").data(),
+		sizeof(entries[entry_index(ghost_entry_t::ADAPTIVE)].text));
+	Q_strlcpy(entries[entry_index(ghost_entry_t::HUD_LEVEL)].text,
+		G_Fmt("Timing HUD: {}", MapTrainer_HudLevelName(level.map_trainer.hud_level)).data(),
+		sizeof(entries[entry_index(ghost_entry_t::HUD_LEVEL)].text));
+	Q_strlcpy(entries[entry_index(ghost_entry_t::SILENT)].text,
+		G_Fmt("Silent Mode: {}", level.map_trainer.silent_feedback ? "ON" : "OFF").data(),
+		sizeof(entries[entry_index(ghost_entry_t::SILENT)].text));
+	Q_strlcpy(entries[entry_index(ghost_entry_t::STATUS)].text,
+		G_Fmt("Took {} | Denied {} / {}", ghost.items_taken, ghost.denials_for, ghost.denials_against).data(),
+		sizeof(entries[entry_index(ghost_entry_t::STATUS)].text));
+}
+
+pmenu_t maptrainer_ghostduel_submenu[] = {
+	{ "Ghost Duel", PMENU_ALIGN_CENTER, nullptr },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Ghost Duel: Disabled", PMENU_ALIGN_LEFT, MapTrainer_ToggleGhostDuel },
+	{ "Ghost Starts Timers: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleGhostTimings },
+	{ "Ghost Skill: Sloppy (+/-4s)", PMENU_ALIGN_LEFT, MapTrainer_CycleGhostSkill },
+	{ "Ghost Body: Through walls", PMENU_ALIGN_LEFT, MapTrainer_CycleGhostBody },
+	{ "Plays The Control Game: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleGhostAdaptive },
+	{ "Timing HUD: Full", PMENU_ALIGN_LEFT, MapTrainer_CycleHudLevel },
+	{ "Silent Mode: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleSilentFeedback },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Took 0 | Denied 0 / 0", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Q2RE Map Trainer", PMENU_ALIGN_CENTER, nullptr },
+	{ TRAINER_VERSION_DISPLAY, PMENU_ALIGN_CENTER, nullptr }
+};
+
+void MapTrainer_OpenGhostDuelSubmenu(edict_t *ent, pmenuhnd_t *p)
+{
+	PMenu_Open(ent, maptrainer_ghostduel_submenu, -1,
+		sizeof(maptrainer_ghostduel_submenu) / sizeof(pmenu_t), nullptr, MapTrainer_UpdateGhostDuelSubmenu);
+}
+
 // ==================== MAIN MENU ====================
 
 // Forward declaration
@@ -501,11 +675,11 @@ pmenu_t maptrainer_menu[] = {
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Item Path Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenItemPathingSubmenu },
 	{ "Item Timing Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenItemTimingSubmenu },
+	{ "Ghost Duel", PMENU_ALIGN_LEFT, MapTrainer_OpenGhostDuelSubmenu },
 	{ "Jump Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenJumpTrainerSubmenu },
 	{ "Spawn Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenSpawnTrainerSubmenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Speedometer: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleSpeedometer },
-	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Close Menu", PMENU_ALIGN_LEFT, MapTrainer_MenuClose },

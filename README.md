@@ -19,7 +19,23 @@ Provides precise feedback on your item respawn timing accuracy.
 - Tracks armor, weapons, powerups, and megahealth
 - Shows if you were early or late (in seconds)
 - Special megahealth handling (accounts for decay time)
+- **Timing HUD** with weaning levels: Full countdowns → item names only → match clock only → off
+- **Match clock** to anchor your timing against, the way a real duel does
+- **Silent mode**: suppresses the per-attempt readout so you have to verify yourself; results arrive in the session summary instead
+- Runs **alongside** the Path Trainer if you want the split-attention drill
 - Perfect for competitive duel practice
+
+### 👻 **Ghost Duel**
+A bodiless simulated opponent that contests the map's major items with you.
+
+- **Takes items on a real cycle**: routes between RA / YA / GA / MH / Quad / RL / RG / CG and genuinely consumes them, so the map stops being predictable from your own actions alone
+- **Audible**: you hear the item's real pickup sound at its real position, attenuated by distance — exactly the cue real players time armor by
+- **Starts your timers**: a ghost pickup begins a timing entry, so returning on schedule is driven by what you *heard*, not by a message
+- **Denials both ways**: beat it to an item and it re-routes; let it take one you were tracking and you lose the cycle
+- **In control / out of control**: compares your stack against the ghost's and tells you which playbook you're in
+- **Skill knob**: Precise (metronome) through Sloppy (±4s arrival jitter)
+
+It has no body and never shoots at you — see *Design and limitations*.
 
 ### 🦘 **Jump Trainer**
 Practice movement mechanics and difficult jumps.
@@ -164,6 +180,8 @@ Enable from the main menu to see your horizontal movement speed in real-time. Gr
 
 ## Design and limitations
 
+The Ghost Duel opponent is **deliberately bodiless**: it has no entity, no model, no pathfinding and no combat. The Q2RE SDK ships empty bot AI (`src/bots/bot_think.cpp`) and engine-side navigation that requires per-map `.nav` files, so a genuinely duelling bot is not available to a mod. It is also not what this trains — the hard part of duel item control is the opponent's *consequences* (items gone when you did not take them, a cycle you must re-derive from a sound), not the opponent's aim. Its health/armor are a resource ledger, not a combat model; it never takes damage.
+
 The trainer is built for **one human practitioner plus bots** on a solo or listen server. All trainer configuration and runtime state lives in server-global structures (`level.map_trainer` / `game.map_trainer_config`), and center-print messages broadcast to every connected client. This is intentional — a per-client redesign would only matter if multi-human practice became a goal.
 
 ---
@@ -177,6 +195,7 @@ The trainer is built for **one human practitioner plus bots** on a solo or liste
 | `loadpos` | Teleport to your saved position |
 | `trainer_debug 1` | Enable debug logging to `trainer.log` |
 | `trainer_debug 0` | Disable debug logging |
+| `trainer_session` | Print the session summary (timing bias, per-item breakdown, control split) |
 
 ### Persisted settings (archived cvars)
 
@@ -184,7 +203,7 @@ These are written automatically when you change options in the trainer menu. The
 
 | Cvar | Default | Description |
 |------|---------|-------------|
-| `trainer_mode` | `0` | Active trainer: `0` off, `1` path, `2` timing |
+| `trainer_mode` | `0` | Active trainers, combinable bit flags: `0` off, `1` path, `2` timing, `3` both |
 | `trainer_weapons` | `1` | Path trainer: include weapons |
 | `trainer_ammo` | `1` | Path trainer: include ammo |
 | `trainer_health` | `1` | Path trainer: include health |
@@ -199,6 +218,12 @@ These are written automatically when you change options in the trainer menu. The
 | `trainer_spawn_intent` | `0` | Spawn trainer enabled (auto-resumes on map load) |
 | `trainer_spawn_random` | `0` | Spawn order: `0` vanilla, `1` random |
 | `trainer_spawn_beacon` | `1` | Spawn trainer beacon beep |
+| `trainer_ghost` | `0` | Ghost Duel enabled (forces the timing trainer on; disables Path, Jump/bhop, and Spawn trainers) |
+| `trainer_ghost_timings` | `1` | Ghost pickups start timing entries (the by-ear drill) |
+| `trainer_ghost_skill` | `3` | Arrival jitter: `0` precise, `1` ±1s, `2` ±2s, `3` ±4s |
+| `trainer_hud_level` | `3` | Timing HUD: `0` off, `1` clock only, `2` names only, `3` full |
+| `trainer_match_length` | `600` | Match clock length in seconds; `0` disables the clock |
+| `trainer_silent_feedback` | `0` | Suppress per-attempt timing readout (results at session end) |
 
 ---
 

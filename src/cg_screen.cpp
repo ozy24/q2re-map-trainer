@@ -1,6 +1,8 @@
 // Copyright (c) ZeniMax Media Inc.
 // Licensed under the GNU General Public License 2.0.
 #include "cg_local.h"
+// [Map Trainer] HUD drawing lives in trainer/trainer_hud_draw.cpp
+#include "trainer/trainer_hud_draw.h"
 
 constexpr int32_t STAT_MINUS      = 10;  // num frame for '-' stats digit
 constexpr const char *sb_nums[2][11] =
@@ -1737,20 +1739,8 @@ void CG_DrawHUD (int32_t isplit, const cg_server_data_t *data, vrect_t hud_vrect
     // draw notify
     CG_DrawNotify(isplit, hud_vrect, hud_safe, scale);
 
-    // draw speedometer if enabled
-    if (ps->stats[STAT_SPEEDOMETER] > 0)
-    {
-        // Position speedometer above the HUD, centered horizontally
-        int speed = ps->stats[STAT_SPEEDOMETER];
-        const char *speed_text = G_Fmt("{}", speed).data();
-        
-        // Calculate position: centered horizontally, above the bottom HUD
-        int x = ((hud_vrect.x + (hud_vrect.width / 2)) * scale);
-        int y = ((hud_vrect.y + hud_vrect.height - 80) * scale); // 80 pixels above bottom
-        
-        // Draw the speedometer text
-        cgi.SCR_DrawFontString(speed_text, x, y, scale, rgba_white, true, text_align_t::CENTER);
-    }
+    // [Map Trainer] trainer HUD (speedometer, match clock, item timers, control state)
+    MapTrainer_DrawHud(ps, hud_vrect, scale);
 
     // svc_layout still drawn with hud off
     if (ps->stats[STAT_LAYOUTS] & LAYOUTS_LAYOUT)

@@ -258,9 +258,19 @@ enum player_stat_t
 	STAT_ACTIVE_WEAPON,
 	// [Map Trainer] speedometer display
 	STAT_SPEEDOMETER,
+	// [Map Trainer] Ghost Duel HUD. Appended, never inserted, so existing indices are
+	// stable. Payloads are bit-packed by trainer_logic (see PackTimerStat/PackControlStat).
+	STAT_TRAINER_CLOCK,   // whole seconds left on the match clock; 0 = no clock
+	STAT_TRAINER_CONTROL, // hud level | control state | ghost stack
+	STAT_TRAINER_TIMER_1, // item id | tenths of a second until respawn
+	STAT_TRAINER_TIMER_2,
+	STAT_TRAINER_TIMER_3,
+	STAT_TRAINER_TIMER_4,
 
 	// don't use; just for verification
     STAT_LAST
 };
 
-static_assert(STAT_LAST <= MAX_STATS + 1, "stats list overflow");
+// Note: the array is std::array<int16_t, MAX_STATS>, so the last usable index is
+// MAX_STATS - 1 and STAT_LAST (a count) must not exceed MAX_STATS.
+static_assert(STAT_LAST <= MAX_STATS, "stats list overflow");

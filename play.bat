@@ -1,6 +1,6 @@
 @echo off
 set "SRC=%~dp0dist\game_x64.dll"
-set "DST=g:\Program Files (x86)\Steam\steamapps\common\Quake 2\rerelease\baseq2\game_x64.dll"
+set "DST=g:\Program Files (x86)\Steam\steamapps\common\Quake 2\rerelease\maptrain\game_x64.dll"
 set "EXE=g:\Program Files (x86)\Steam\steamapps\common\Quake 2\rerelease\quake2ex_steam.exe"
 
 if not exist "%SRC%" (
@@ -20,4 +20,4 @@ if errorlevel 1 (
 )
 
 echo Copy successful. Launching game...
-start "" "%EXE%"
+start "" "%EXE%" +set game maptrain +set deathmatch 1 +map q2dm1

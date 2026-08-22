@@ -113,7 +113,7 @@ void MapTrainer_PickNewTarget()
 	// Always show "travel from X to Y" if we have a previous target (and training is enabled)
 	if (level.map_trainer.previous_target_index >= 0 && 
 		level.map_trainer.previous_target_index < level.map_trainer.item_count &&
-		level.map_trainer.trainer_mode == trainer_mode_t::PATH)
+		MapTrainer_IsModeActive(trainer_mode_t::PATH))
 	{
 		map_trainer_item_t *previous = &level.map_trainer.items[level.map_trainer.previous_target_index];
 		
@@ -212,16 +212,16 @@ void MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player)
 
 void MapTrainer_ShowWelcomeMessage(edict_t *player)
 {
-	if (level.map_trainer.trainer_mode == trainer_mode_t::PATH && level.map_trainer.initialized)
+	if (MapTrainer_IsModeActive(trainer_mode_t::PATH) && level.map_trainer.initialized)
 	{
 		gi.LocClient_Print(player, PRINT_CENTER, "Map items loaded.\nPlease pick up an item to begin.");
 	}
-	else if (level.map_trainer.trainer_mode == trainer_mode_t::PATH && !level.map_trainer.initialized)
+	else if (MapTrainer_IsModeActive(trainer_mode_t::PATH) && !level.map_trainer.initialized)
 	{
-		gi.LocClient_Print(player, PRINT_CENTER, "No items found in map.\nTraining mode disabled.");
-		// Auto-disable training if items weren't found (persist so it doesn't re-arm next map)
-		level.map_trainer.trainer_mode = trainer_mode_t::OFF;
-		MapTrainer_SaveConfig();
+		gi.LocClient_Print(player, PRINT_CENTER, "No items found in map.\nPath trainer disabled.");
+		// Auto-disable path training if items weren't found (persist so it doesn't re-arm
+		// next map). Clears only the PATH flag - any timing/ghost work keeps running.
+		MapTrainer_SetModeFlag(trainer_mode_t::PATH, false);
 	}
 	else
 	{
@@ -234,7 +234,7 @@ void MapTrainer_ScheduleWelcomeMessage(edict_t *player)
 	if (!player || !player->client || (player->svflags & SVF_BOT))
 		return;
 
-	const bool path_awaiting_pickup = level.map_trainer.trainer_mode == trainer_mode_t::PATH &&
+	const bool path_awaiting_pickup = MapTrainer_IsModeActive(trainer_mode_t::PATH) &&
 		level.map_trainer.initialized && level.map_trainer.first_pickup;
 
 	if (level.map_trainer.welcome_message_shown && !path_awaiting_pickup)

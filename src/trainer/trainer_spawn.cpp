@@ -246,7 +246,7 @@ void MapTrainer_OnSpawnTrainerPlaced(edict_t *ent)
 // the bot can't be created during SpawnEntities (ClientConnect is unsafe there), so
 // MapTrainer_Init sets spawn_trainer_resume_pending and we create the bot here on a normal
 // server frame, once at least one human client is actually in the game.
-void MapTrainer_RunFrame()
+void MapTrainer_SpawnTrainerRunFrame()
 {
 	if (!level.map_trainer.spawn_trainer_resume_pending)
 		return;

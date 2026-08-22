@@ -682,7 +682,7 @@ bool Pickup_Health(edict_t *ent, edict_t *other)
 
 	// Map Trainer: Allow health items to be picked up even at full health when path training is enabled
 	bool is_map_trainer_target = level.map_trainer.initialized && MapTrainer_IsTargetItem(ent);
-	bool path_training_enabled = level.map_trainer.trainer_mode == trainer_mode_t::PATH && level.map_trainer.initialized;
+	bool path_training_enabled = MapTrainer_IsModeActive(trainer_mode_t::PATH) && level.map_trainer.initialized;
 
 	if (!(health_flags & HEALTH_IGNORE_MAX) && !is_map_trainer_target && !path_training_enabled)
 		if (other->health >= other->max_health)
@@ -828,9 +828,9 @@ bool Pickup_Armor(edict_t *ent, edict_t *other)
 			// if we're already maxed out then we don't need the new armor
 			// Map Trainer: Allow armor pickup during path training (incl. first pickup before a target is set)
 			bool is_map_trainer_target = level.map_trainer.initialized && MapTrainer_IsTargetItem(ent);
-			bool path_training_enabled = level.map_trainer.trainer_mode == trainer_mode_t::PATH && level.map_trainer.initialized;
+			bool path_training_enabled = MapTrainer_IsModeActive(trainer_mode_t::PATH) && level.map_trainer.initialized;
 			// Map Trainer: Allow pickup if free collect is enabled (timing trainer)
-			bool free_collect_allowed = level.map_trainer.trainer_mode == trainer_mode_t::TIMING && level.map_trainer.free_collect_enabled;
+			bool free_collect_allowed = MapTrainer_IsModeActive(trainer_mode_t::TIMING) && level.map_trainer.free_collect_enabled;
 			if (other->client->pers.inventory[old_armor_index] >= newcount && !is_map_trainer_target && !path_training_enabled && !free_collect_allowed)
 				return false;
 
@@ -957,7 +957,7 @@ TOUCH(Touch_Item) (edict_t *ent, edict_t *other, const trace_t &tr, bool other_t
 
 	// Map Trainer: Only allow pickup of target items (or any item if first pickup)
 	// Bots are excluded from this restriction so they can pick up items normally
-	if (level.map_trainer.initialized && level.map_trainer.trainer_mode == trainer_mode_t::PATH && !(other->svflags & SVF_BOT))
+	if (level.map_trainer.initialized && MapTrainer_IsModeActive(trainer_mode_t::PATH) && !(other->svflags & SVF_BOT))
 	{
 		if (!level.map_trainer.first_pickup && !MapTrainer_IsTargetItem(ent))
 		{
@@ -973,12 +973,17 @@ TOUCH(Touch_Item) (edict_t *ent, edict_t *other, const trace_t &tr, bool other_t
 	if (taken)
 	{
 		// Map Trainer: Check if this is the target item (only if training is enabled)
-		if (level.map_trainer.trainer_mode == trainer_mode_t::PATH)
+		if (MapTrainer_IsModeActive(trainer_mode_t::PATH))
 			MapTrainer_OnItemPickup(ent, other);
 		
 		// [Map Trainer] Item Timing Trainer - all logic in trainer/trainer_timing.cpp
 		MapTrainer_OnTimingItemPickup(ent, other);
-		
+
+		// [Map Trainer] Ghost Duel - did the player just deny the ghost its target?
+		if (!(other->svflags & SVF_BOT))
+			MapTrainer_GhostOnPlayerPickup(ent, other);
+
+
 		// flash the screen
 		other->client->bonus_alpha = 0.25;
 

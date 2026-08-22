@@ -17,7 +17,7 @@ git submodule update --init --recursive
 .\scripts\setup-vcpkg.ps1
 ```
 
-`setup-vcpkg.ps1` bootstraps `vcpkg/vcpkg.exe` and runs `vcpkg install --triplet x64-windows-static` from `src/` (matches `VcpkgUseStatic=true` in [`src/game.vcxproj`](src/game.vcxproj)). More detail: [`src/BUILD_SETUP.md`](src/BUILD_SETUP.md).
+`setup-vcpkg.ps1` bootstraps `vcpkg/vcpkg.exe` and runs `vcpkg install --triplet x64-windows-static` from `src/` (matches `VcpkgUseStatic=true` in [`src/game.vcxproj`](src/game.vcxproj)). More detail: [`docs/BUILD_SETUP.md`](docs/BUILD_SETUP.md).
 
 ### Build and deploy
 
@@ -49,13 +49,13 @@ CI: [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml)
 
 **Mod version:** canonical source is [`src/trainer/trainer_version.h`](src/trainer/trainer_version.h) (in-game menu footer) and repo-root [`VERSION`](VERSION). Bump both plus `README.md` when releasing.
 
-There is **no test suite**. Verification is manual, in-game (see below).
+Host-compiled unit tests cover the engine-free logic in `src/trainer/trainer_logic.{h,cpp}`: run `.\test.bat`, which builds `dist/trainer_tests_x64.exe` from `tests/trainer_logic_test.cpp` and runs it (CI runs it too). Anything needing the engine is verified manually, in-game (see below) — so put new pure logic in `trainer_logic` where it can be tested.
 
-## Manual verification (no automated tests)
+## Manual verification (for anything the unit tests can't reach)
 
 1. Build (`.\build.bat`), deploy (`.\play.bat` or copy `dist/game_x64.dll` into `<Q2RE>/baseq2/`), launch deathmatch (e.g. `+set deathmatch 1 +map q2dm1`).
 2. Press **TAB** (or console `maptrainer`) to open the menu; toggle features and observe behavior.
-3. For logs: console `trainer_debug 1` writes `trainer.log` (truncated each run) in the Q2 working dir. All trainer logging goes through `TrainerLog(category, fmt, ...)` in `trainer/trainer_debug.cpp` and is a no-op unless the `trainer_debug` cvar is set.
+3. For logs: console `trainer_debug 1` writes `trainer.log` (appended, with a session banner per run) in the Q2 working dir. All trainer logging goes through `TrainerLog(category, fmt, ...)` in `trainer/trainer_debug.cpp` and is a no-op unless the `trainer_debug` cvar is set.
 
 ## Architecture: "thin vanilla"
 
@@ -70,7 +70,11 @@ This is the single most important convention in the repo. All trainer logic live
 - `trainer.h` — all data structures and the full `MapTrainer_*` API. `map_trainer_t` (per-map state) and `map_trainer_config_t` (persistent config) live here.
 - `trainer_core.cpp` — `MapTrainer_Init`, item-list building from live map entities, category filtering, config save/load.
 - `trainer_path.cpp` — item path trainer (pick next target, pickup handling, welcome message).
-- `trainer_timing.cpp` — item respawn timing trainer (up to 32 concurrent timings, megahealth decay handling).
+- `trainer_timing.cpp` — item respawn timing trainer (up to 32 concurrent timings, megahealth decay handling). Also owns `MapTrainer_GetTimedItemInfo` (the single source of truth for stock respawn delays, shared with the ghost) and `MapTrainer_ReportTimingResult` (the one place a per-attempt result is printed or suppressed).
+- `trainer_ghost.cpp` — Ghost Duel: opponent that routes between majors, consumes them via `SetRespawn`, plays their real pickup sound with `gi.positioned_sound`, and drives the control-state readout.
+- `trainer_hud.cpp` — packs the HUD payload into bit-packed player stats (server side, `gi`).
+- `trainer_hud_draw.cpp` — draws the HUD (client side, `cgi`). Deliberately a separate TU from `trainer_hud.cpp`; do not merge them.
+- `trainer_session.cpp` — session scoring: mean signed timing error, per-item breakdown, time-in-control split, bhop consistency. Printed by `trainer_session`, at match-clock expiry, and when the ghost is disabled.
 - `trainer_jump.cpp` — speedometer, `savepos`/`loadpos`, bhop consistency tracking.
 - `trainer_spawn.cpp` — spawn trainer bot lifecycle (creates/destroys a bot client, beacon beep).
 - `trainer_menu.cpp` — the entire PMenu-based menu/submenu UI and all toggle handlers.
@@ -96,6 +100,11 @@ Find them by searching `// [Map Trainer]` or `MapTrainer_`:
 The UI reuses the SDK's PMenu system (`ctf/p_ctf_menu.cpp`): menus are static `pmenu_t[]` arrays with select-callbacks and an update function. Note `PMenu_Update` is rate-limited (~1s), so do not rely on it for side effects that must happen immediately on a toggle — do those directly in the toggle handler.
 
 ### Mutual exclusions / gotchas
-- Path Trainer and Timing Trainer are mutually exclusive; enabling one disables the other (and frees/clears the other's state).
+- Path Trainer and Timing Trainer are **combinable bit flags**, not mutually exclusive — running both at once is the intended dual-task drill. Test with `MapTrainer_IsModeActive(trainer_mode_t::PATH)`, never `== trainer_mode_t::PATH`, and toggle with `MapTrainer_SetModeFlag`, which tears down only the flag being cleared. The `trainer_mode` cvar stores the flag set as an int (`3` = both), so legacy values `0`/`1`/`2` keep their meaning.
+- The ghost holds its target as an `edict_t *`, **not** an index into `level.map_trainer.items` — that array belongs to path mode and is freed when path mode is turned off, which would leave a dangling index. It enumerates live entities itself for the same reason.
+- The ghost's `s.alpha` must never be 0: zero means "default", not invisible (`game.h:1397`).
+- `SVF_NOCULL` (`game.h:1569`) is what makes the ghost body visible through walls; without it Q2's PVS culling stops the entity being sent at all across areas. Any entity whose origin changes **must** be relinked with `gi.linkentity` or it keeps its stale PVS cluster.
+- New player stats go at the **end** of `player_stat_t` (`bg_local.h`), before `STAT_LAST`; inserting mid-enum renumbers existing stats. Stats are `int16_t`, so HUD payloads are bit-packed by `trainer_logic` — always leave bit 15 clear or the value sign-extends negative in transit.
 - `MapTrainer_BuildItemList` frees and rebuilds `items`; it must only run when `items` is `nullptr` or validly allocated — `MapTrainer_Init` nulls it first to avoid a double free.
 - The spawn trainer creates a real bot client via `ClientChooseSlot`/`ClientConnect`/`ClientBegin`; this must run on a normal server frame, not during map spawn.
+

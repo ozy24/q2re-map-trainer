@@ -43,76 +43,90 @@ void MapTrainer_ValidateTrainerMode()
 {
 	const int32_t mode = static_cast<int32_t>(level.map_trainer.trainer_mode);
 	if (mode < static_cast<int32_t>(trainer_mode_t::OFF) ||
-		mode > static_cast<int32_t>(trainer_mode_t::TIMING))
+		mode > static_cast<int32_t>(trainer_mode_t::ALL))
 	{
 		level.map_trainer.trainer_mode = trainer_mode_t::OFF;
 	}
 }
 
-void MapTrainer_SetMode(trainer_mode_t mode, edict_t *notify)
+bool MapTrainer_IsModeActive(trainer_mode_t flag)
+{
+	return (static_cast<int32_t>(level.map_trainer.trainer_mode) & static_cast<int32_t>(flag)) != 0;
+}
+
+static void MapTrainer_ApplyModeFlag(trainer_mode_t flag, bool enabled)
+{
+	const int32_t bits = static_cast<int32_t>(level.map_trainer.trainer_mode);
+	const int32_t bit = static_cast<int32_t>(flag);
+	level.map_trainer.trainer_mode = static_cast<trainer_mode_t>(enabled ? (bits | bit) : (bits & ~bit));
+}
+
+void MapTrainer_SetModeFlag(trainer_mode_t flag, bool enabled, edict_t *notify)
 {
 	MapTrainer_ValidateTrainerMode();
 
-	if (mode == level.map_trainer.trainer_mode)
+	if (flag != trainer_mode_t::PATH && flag != trainer_mode_t::TIMING)
 		return;
 
-	const trainer_mode_t old_mode = level.map_trainer.trainer_mode;
+	if (MapTrainer_IsModeActive(flag) == enabled)
+		return;
 
-	switch (old_mode)
+	MapTrainer_ApplyModeFlag(flag, enabled);
+
+	if (flag == trainer_mode_t::PATH)
 	{
-	case trainer_mode_t::PATH:
-		MapTrainer_TeardownPathMode();
-		break;
-	case trainer_mode_t::TIMING:
-		MapTrainer_TeardownTimingMode();
-		break;
-	case trainer_mode_t::OFF:
-		break;
-	}
-
-	level.map_trainer.trainer_mode = mode;
-
-	switch (mode)
-	{
-	case trainer_mode_t::PATH:
-		if (old_mode == trainer_mode_t::TIMING && notify)
-			gi.LocClient_Print(notify, PRINT_HIGH, "Item Timing Trainer automatically disabled.");
-
-		MapTrainer_BuildItemList(level.mapname);
-		level.map_trainer.first_pickup = true;
-		level.map_trainer.current_target_index = -1;
-		level.map_trainer.previous_target_index = -1;
-
-		if (level.map_trainer.initialized)
+		if (enabled)
 		{
-			if (notify)
-				gi.LocClient_Print(notify, PRINT_HIGH, "Item Path Trainer enabled. Items loaded from map.");
+			MapTrainer_BuildItemList(level.mapname);
+			level.map_trainer.first_pickup = true;
+			level.map_trainer.current_target_index = -1;
+			level.map_trainer.previous_target_index = -1;
+
+			if (level.map_trainer.initialized)
+			{
+				if (notify)
+					gi.LocClient_Print(notify, PRINT_HIGH, "Item Path Trainer enabled. Items loaded from map.");
+			}
+			else
+			{
+				if (notify)
+					gi.LocClient_Print(notify, PRINT_HIGH, "No items found in map. Item Path Trainer disabled.");
+				MapTrainer_ApplyModeFlag(trainer_mode_t::PATH, false);
+			}
 		}
 		else
 		{
+			MapTrainer_TeardownPathMode();
 			if (notify)
-				gi.LocClient_Print(notify, PRINT_HIGH, "No items found in map. Item Path Trainer disabled.");
-			level.map_trainer.trainer_mode = trainer_mode_t::OFF;
-		}
-		break;
-	case trainer_mode_t::TIMING:
-		if (old_mode == trainer_mode_t::PATH && notify)
-			gi.LocClient_Print(notify, PRINT_HIGH, "Item Path Trainer automatically disabled.");
-		if (notify)
-			gi.LocClient_Print(notify, PRINT_HIGH, "Item Timing Trainer enabled.");
-		break;
-	case trainer_mode_t::OFF:
-		if (notify)
-		{
-			if (old_mode == trainer_mode_t::PATH)
 				gi.LocClient_Print(notify, PRINT_HIGH, "Item Path Trainer disabled.");
-			else if (old_mode == trainer_mode_t::TIMING)
+		}
+	}
+	else // TIMING
+	{
+		if (enabled)
+		{
+			if (notify)
+				gi.LocClient_Print(notify, PRINT_HIGH, "Item Timing Trainer enabled.");
+		}
+		else
+		{
+			MapTrainer_TeardownTimingMode();
+			if (notify)
 				gi.LocClient_Print(notify, PRINT_HIGH, "Item Timing Trainer disabled.");
 		}
-		break;
 	}
 
 	MapTrainer_SaveConfig();
+}
+
+// ==================== PER-FRAME DISPATCH ====================
+
+// Single entry point called once per server frame from g_main.cpp. Each subsystem
+// owns its own early-out, so order here is just "cheapest first".
+void MapTrainer_RunFrame()
+{
+	MapTrainer_SpawnTrainerRunFrame();
+	MapTrainer_GhostRunFrame();
 }
 
 // ==================== CORE INITIALIZATION ====================
@@ -151,16 +165,25 @@ void MapTrainer_Init()
 		level.map_trainer.timing_entries[i].item_classname = nullptr;
 	}
 	MapTrainer_InitSpawnTrainerState();
+	MapTrainer_SessionReset();
+	level.map_trainer.match_clock_expired = false;
+	MapTrainer_StopMatchClock();
 
 	// Load persisted settings: archived cvars (survive restart), then in-memory overlay (map changes)
 	MapTrainer_LoadFromCvars();
 	MapTrainer_LoadConfig();
 	MapTrainer_ValidateTrainerMode();
 
+	// Ghost state is per-map runtime and must be reset after config load (which is what
+	// tells us whether the ghost should be running at all on this map).
+	MapTrainer_InitGhost();
+	if (level.map_trainer.ghost_enabled)
+		MapTrainer_SetGhostEnabled(true, nullptr); // re-asserts TIMING mode as a side effect
+
 	// Re-establish per-map runtime state from the (possibly restored) config.
 	// Item arrays were freed with TAG_LEVEL before this runs and items is now nullptr,
 	// so BuildItemList rebuilds cleanly for the new map.
-	if (level.map_trainer.trainer_mode == trainer_mode_t::PATH)
+	if (MapTrainer_IsModeActive(trainer_mode_t::PATH))
 	{
 		MapTrainer_BuildItemList(level.mapname);
 		level.map_trainer.first_pickup = true;
@@ -198,6 +221,14 @@ void MapTrainer_SaveConfig()
 	cfg.spawn_trainer_true_random = level.map_trainer.spawn_trainer_true_random;
 	cfg.spawn_trainer_beacon_enabled = level.map_trainer.spawn_trainer_beacon_enabled;
 	cfg.spawn_trainer_intent = level.map_trainer.spawn_trainer_intent;
+	cfg.ghost_enabled = level.map_trainer.ghost_enabled;
+	cfg.ghost_timings_enabled = level.map_trainer.ghost_timings_enabled;
+	cfg.ghost_skill = level.map_trainer.ghost_skill;
+	cfg.ghost_body_level = level.map_trainer.ghost_body_level;
+	cfg.ghost_adaptive = level.map_trainer.ghost_adaptive;
+	cfg.hud_level = level.map_trainer.hud_level;
+	cfg.match_length_sec = level.map_trainer.match_length_sec;
+	cfg.silent_feedback = level.map_trainer.silent_feedback;
 	cfg.valid = true;
 
 	MapTrainer_WriteCvars();
@@ -227,6 +258,14 @@ void MapTrainer_LoadConfig()
 	level.map_trainer.spawn_trainer_true_random = cfg.spawn_trainer_true_random;
 	level.map_trainer.spawn_trainer_beacon_enabled = cfg.spawn_trainer_beacon_enabled;
 	level.map_trainer.spawn_trainer_intent = cfg.spawn_trainer_intent;
+	level.map_trainer.ghost_enabled = cfg.ghost_enabled;
+	level.map_trainer.ghost_timings_enabled = cfg.ghost_timings_enabled;
+	level.map_trainer.ghost_skill = cfg.ghost_skill;
+	level.map_trainer.ghost_body_level = cfg.ghost_body_level;
+	level.map_trainer.ghost_adaptive = cfg.ghost_adaptive;
+	level.map_trainer.hud_level = cfg.hud_level;
+	level.map_trainer.match_length_sec = cfg.match_length_sec;
+	level.map_trainer.silent_feedback = cfg.silent_feedback;
 }
 
 // ==================== UTILITY FUNCTIONS ====================
