@@ -33,7 +33,7 @@ static_assert(std::size(GHOST_SKILL_JITTER_SEC) == static_cast<size_t>(GHOST_SKI
 
 constexpr int32_t GHOST_HEALTH_START = 100;
 constexpr int32_t GHOST_HEALTH_BASE = 100; // megahealth decays back down to this
-constexpr int32_t GHOST_HEALTH_MAX = 250;
+constexpr int32_t GHOST_HEALTH_MAX = 200; // base + one megahealth's flat +100 bonus
 
 constexpr int32_t GHOST_MAX_CANDIDATES = 64;
 
