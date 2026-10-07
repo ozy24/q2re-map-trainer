@@ -18,6 +18,7 @@ cvar_t *trainer_mode;
 cvar_t *trainer_combine_health;
 cvar_t *trainer_path_stimpacks;
 cvar_t *trainer_path_armor_shards;
+cvar_t *trainer_path_run_mode;
 cvar_t *trainer_free_collect;
 cvar_t *trainer_timing_major_only;
 cvar_t *trainer_timing_challenge;
@@ -57,6 +58,7 @@ void MapTrainer_RegisterCvars()
 	trainer_combine_health = gi.cvar("trainer_combine_health", "0", CVAR_ARCHIVE);
 	trainer_path_stimpacks = gi.cvar("trainer_path_stimpacks", "1", CVAR_ARCHIVE);
 	trainer_path_armor_shards = gi.cvar("trainer_path_armor_shards", "1", CVAR_ARCHIVE);
+	trainer_path_run_mode = gi.cvar("trainer_path_run_mode", "0", CVAR_ARCHIVE);
 	trainer_free_collect = gi.cvar("trainer_free_collect", "1", CVAR_ARCHIVE);
 	trainer_timing_major_only = gi.cvar("trainer_timing_major_only", "1", CVAR_ARCHIVE);
 	trainer_timing_challenge = gi.cvar("trainer_timing_challenge", "0", CVAR_ARCHIVE);
@@ -72,6 +74,10 @@ void MapTrainer_RegisterCvars()
 	trainer_hud_level = gi.cvar("trainer_hud_level", "3", CVAR_ARCHIVE);
 	trainer_match_length = gi.cvar("trainer_match_length", "600", CVAR_ARCHIVE);
 	trainer_silent_feedback = gi.cvar("trainer_silent_feedback", "0", CVAR_ARCHIVE);
+
+	// Random items also applies when a map spawns its items, which happens before
+	// MapTrainer_Init runs, so force it off here too (InitGame, before the first map).
+	MapTrainer_EnforceItemRules(false);
 }
 
 void MapTrainer_LoadFromCvars()
@@ -86,6 +92,7 @@ void MapTrainer_LoadFromCvars()
 	level.map_trainer.combine_health_packs = CvarToBool(trainer_combine_health);
 	level.map_trainer.path_stimpacks_enabled = CvarToBool(trainer_path_stimpacks);
 	level.map_trainer.path_armor_shards_enabled = CvarToBool(trainer_path_armor_shards);
+	level.map_trainer.path_run_mode = CvarToBool(trainer_path_run_mode);
 	level.map_trainer.free_collect_enabled = CvarToBool(trainer_free_collect);
 	level.map_trainer.timing_major_items_only = CvarToBool(trainer_timing_major_only);
 	level.map_trainer.timing_challenge_mode = static_cast<timing_challenge_mode_t>(
@@ -125,6 +132,7 @@ void MapTrainer_WriteCvars()
 	CvarSetBool("trainer_combine_health", level.map_trainer.combine_health_packs);
 	CvarSetBool("trainer_path_stimpacks", level.map_trainer.path_stimpacks_enabled);
 	CvarSetBool("trainer_path_armor_shards", level.map_trainer.path_armor_shards_enabled);
+	CvarSetBool("trainer_path_run_mode", level.map_trainer.path_run_mode);
 	CvarSetBool("trainer_free_collect", level.map_trainer.free_collect_enabled);
 	CvarSetBool("trainer_timing_major_only", level.map_trainer.timing_major_items_only);
 	gi.cvar_set("trainer_timing_challenge",

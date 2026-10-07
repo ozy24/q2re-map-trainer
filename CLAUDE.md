@@ -74,6 +74,7 @@ This is the single most important convention in the repo. All trainer logic live
 - `trainer_ghost.cpp` — Ghost Duel: opponent that routes between majors, consumes them via `SetRespawn`, plays their real pickup sound with `gi.positioned_sound`, and drives the control-state readout.
 - `trainer_hud.cpp` — packs the HUD payload into bit-packed player stats (server side, `gi`).
 - `trainer_hud_draw.cpp` — draws the HUD (client side, `cgi`). Deliberately a separate TU from `trainer_hud.cpp`; do not merge them.
+- `trainer_records.cpp` — Item Run records: appends every finished run to `maptrainer_runs.txt` (working directory), caches the current map's top 10 ranked runs for the Run Records menu page, the run-complete message and `trainer_runs`. Parsing/ranking is in `trainer_logic`.
 - `trainer_session.cpp` — session scoring: mean signed timing error, per-item breakdown, time-in-control split, bhop consistency. Printed by `trainer_session`, at match-clock expiry, and when the ghost is disabled.
 - `trainer_jump.cpp` — speedometer, `savepos`/`loadpos`, bhop consistency tracking.
 - `trainer_spawn.cpp` — spawn trainer bot lifecycle (creates/destroys a bot client, beacon beep).
@@ -94,13 +95,14 @@ Find them by searching `// [Map Trainer]` or `MapTrainer_`:
 - `g_main.cpp` — `MapTrainer_RunFrame()` once per server frame (deferred spawn-bot auto-resume; bot creation is unsafe during `SpawnEntities`).
 - `g_items.cpp` — pickup hooks: allow picking up the current target item even at max ammo/health/armor, and route pickups to `MapTrainer_OnItemPickup` / `MapTrainer_OnTimingItemPickup`.
 - `p_client.cpp` — per-frame `MapTrainer_UpdateSpeedometer` / timing checks / bhop tracking; spawn-trainer bot client begin/disconnect/respawn; `MapTrainer_ShowWelcomeMessage`.
-- `g_cmds.cpp` — registers the `maptrainer`, `savepos`, `loadpos` console commands.
+- `g_cmds.cpp` — registers the `maptrainer`, `savepos`, `loadpos`, `trainer_session`, `trainer_navcheck` and `trainer_runs` console commands.
 
 ### Menu system
 The UI reuses the SDK's PMenu system (`ctf/p_ctf_menu.cpp`): menus are static `pmenu_t[]` arrays with select-callbacks and an update function. Note `PMenu_Update` is rate-limited (~1s), so do not rely on it for side effects that must happen immediately on a toggle — do those directly in the toggle handler.
 
 ### Mutual exclusions / gotchas
-- Path Trainer and Timing Trainer are **combinable bit flags**, not mutually exclusive — running both at once is the intended dual-task drill. Test with `MapTrainer_IsModeActive(trainer_mode_t::PATH)`, never `== trainer_mode_t::PATH`, and toggle with `MapTrainer_SetModeFlag`, which tears down only the flag being cleared. The `trainer_mode` cvar stores the flag set as an int (`3` = both), so legacy values `0`/`1`/`2` keep their meaning.
+- **One trainer at a time.** Path, Timing, Ghost Duel, bhop and Spawn are exclusive: every *enable* path calls `MapTrainer_DisableOtherTrainers(keep, notify)` first (it only ever disables, so it can't recurse). Ghost Duel runs on the TIMING flag internally, which is why `trainer_mode_t` is still bit flags; PATH and TIMING are never set together. Test with `MapTrainer_IsModeActive(trainer_mode_t::PATH)`, never `==`, and set flags with `MapTrainer_SetModeFlag`. Saved settings asking for several trainers (an old `trainer_mode 3`) are resolved at map load by `trainer_logic::ResolveExclusiveTrainer` (ghost > path > timing > spawn > bhop). The speedometer, savepos/loadpos and per-trainer options are not trainers.
+- **Weapons stay and random items are never allowed.** `MapTrainer_EnforceItemRules` forces `g_dm_weapons_stay` and `g_dm_random_items` to 0 at InitGame (by name: their cvar pointers are registered later), at every map load and every frame from `MapTrainer_RunFrame`. Items must vanish and respawn as themselves for every trainer and for ranked Item Runs.
 - The ghost holds its target as an `edict_t *`, **not** an index into `level.map_trainer.items` — that array belongs to path mode and is freed when path mode is turned off, which would leave a dangling index. It enumerates live entities itself for the same reason.
 - The ghost's `s.alpha` must never be 0: zero means "default", not invisible (`game.h:1397`).
 - `SVF_NOCULL` (`game.h:1569`) is what makes the ghost body visible through walls; without it Q2's PVS culling stops the entity being sent at all across areas. Any entity whose origin changes **must** be relinked with `gi.linkentity` or it keeps its stale PVS cluster.

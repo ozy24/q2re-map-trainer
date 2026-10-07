@@ -11,6 +11,10 @@ struct edict_t;
 struct pmenuhnd_t;
 struct pmove_t;
 struct gitem_t;
+namespace trainer_logic
+{
+enum class trainer_kind_t : int32_t; // trainer_logic.h; trainer.h must not include it
+}
 
 // ==================== DATA STRUCTURES ====================
 
@@ -24,11 +28,10 @@ enum class timing_challenge_mode_t : int32_t
 	PRO = 4      // ±1 second
 };
 
-// Path and Timing are independent, combinable flags. Running them together is the
-// point: routing to a called target while tracking respawns you only heard is the
-// dual-task load an actual duel imposes, and practising either one alone does not
-// build it. Persisted as an int cvar, so legacy values 0/1/2 keep their meaning and
-// 3 means both.
+// Path and Timing are bit flags only because Ghost Duel runs on the timing trainer.
+// Only one trainer runs at a time (MapTrainer_DisableOtherTrainers), so PATH and TIMING
+// are never set together any more. Persisted as an int cvar; an old saved 3 (both) is
+// resolved to PATH at map load by trainer_logic::ResolveExclusiveTrainer.
 enum class trainer_mode_t : int32_t
 {
 	OFF = 0,
@@ -43,6 +46,9 @@ struct map_trainer_item_t
 	char class_name[64];
 	vec3_t position;
 	edict_t *ent; // cached at build; stable for stock DM items (respawn toggles SVF_RESPAWNING). Rebuilt each map/toggle.
+	// Item Run: taken during the current run, so its respawn is held until the run
+	// completes. Cleared by a rebuild, which is why every rebuild releases held items first.
+	bool collected_in_run;
 };
 
 // Bodiless simulated duel opponent. It runs a major-item cycle, genuinely consumes
@@ -163,13 +169,21 @@ struct map_trainer_t
 	bool powerups_enabled;
 	// Speedometer
 	bool speedometer_enabled;
-	// Path or Timing trainer (mutually exclusive)
+	// Path or Timing trainer (exclusive, like every trainer - see trainer_mode_t)
 	trainer_mode_t trainer_mode;
 	// Combine health packs toggle
 	bool combine_health_packs;
 	// Path training: include stimpacks / armor shards as targets
 	bool path_stimpacks_enabled;
 	bool path_armor_shards_enabled;
+	// Item Run: path mode with respawns held. Every item collected stays gone until the
+	// whole set has been collected; the run is timed, then everything comes back.
+	// path_run_mode is config (mirrored); the rest is per-map runtime.
+	bool path_run_mode;
+	int32_t run_number;       // runs started on this map
+	gtime_t run_start_time;   // first pickup of the current run
+	gtime_t run_best_time;    // fastest completed run on this map; 0 = none yet
+	gtime_t run_release_time; // a finished run's items come back at this time; 0 = none pending
 	// Free collect toggle - allows picking up armor even at max
 	bool free_collect_enabled;
 	// Debug prints toggle for timing trainer
@@ -255,6 +269,7 @@ struct map_trainer_config_t
 	bool combine_health_packs;
 	bool path_stimpacks_enabled;
 	bool path_armor_shards_enabled;
+	bool path_run_mode;
 	bool free_collect_enabled;
 	bool timing_debug_enabled;
 	bool timing_major_items_only;
@@ -288,6 +303,14 @@ void MapTrainer_LoadConfig(); // game.map_trainer_config -> level.map_trainer (i
 bool MapTrainer_IsModeActive(trainer_mode_t flag);
 void MapTrainer_SetModeFlag(trainer_mode_t flag, bool enabled, edict_t *notify = nullptr);
 void MapTrainer_ValidateTrainerMode();
+// Only one trainer runs at a time: switches off every trainer except `keep` (Path,
+// Timing, Ghost Duel, bhop, Spawn), with the usual "X disabled." messages to notify.
+// Call it before enabling a trainer. It only ever disables, so it cannot recurse.
+void MapTrainer_DisableOtherTrainers(trainer_logic::trainer_kind_t keep, edict_t *notify);
+// Weapons stay and random items stop items vanishing and respawning as themselves,
+// which every trainer and ranked Item Runs depend on. Forces both off; announce tells
+// players when something had turned one on mid-map.
+void MapTrainer_EnforceItemRules(bool announce);
 
 // Per-frame trainer tick (deferred spawn-trainer auto-resume)
 void MapTrainer_RunFrame();
@@ -316,6 +339,21 @@ bool MapTrainer_IsItemAvailable(int32_t item_index);
 void MapTrainer_PickNewTarget();
 bool MapTrainer_IsTargetItem(edict_t *ent);
 void MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player);
+// Item Run: holds collected items' respawns and brings a finished run's items back.
+void MapTrainer_PathRunFrame();
+// Respawns every item held by the current run now and clears the run's collected
+// marks. Call before anything frees or rebuilds the item list.
+void MapTrainer_ReleaseRunItems();
+// Item Run records (trainer_records.cpp): every run saved to maptrainer_runs.txt, the
+// current map's fastest ranked runs cached for the menu, the run message and trainer_runs.
+void MapTrainer_RecordsLoad(); // current map's table; called by MapTrainer_Init
+// Saves the run; returns its rank among ranked runs (1 = map record), 0 if unranked or too slow.
+int32_t MapTrainer_RecordsAddRun(int64_t run_ms, int32_t items, bool ranked);
+int32_t MapTrainer_RecordsCount();
+int64_t MapTrainer_RecordsBestMs(); // 0 when the map has no ranked runs
+void MapTrainer_RecordsFormatMenuRow(int32_t index, char *out, size_t out_size);
+void MapTrainer_RecordsPrint(edict_t *player, const char *map); // map null/empty = current
+void Cmd_TrainerRuns_f(edict_t *ent);
 
 // UI
 void MapTrainer_ShowWelcomeMessage(edict_t *player);
@@ -451,6 +489,9 @@ void MapTrainer_MenuClose(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_BackToMainMenu(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_UpdateMenu(edict_t *ent);
 
+// Item Run records page
+void MapTrainer_OpenRunRecordsSubmenu(edict_t *ent, pmenuhnd_t *p);
+void MapTrainer_UpdateRunRecordsSubmenu(edict_t *ent);
 // Path training submenu
 void MapTrainer_OpenItemPathingSubmenu(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent);

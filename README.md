@@ -5,12 +5,15 @@ A training mod for Quake 2 Rerelease that helps players learn maps, improve item
 
 ## 🎯 Features
 
+**One trainer at a time.** Item Path, Item Timing, Ghost Duel, the Jump (bhop) trainer and the Spawn Trainer are exclusive: enabling one switches the others off. The speedometer and savepos/loadpos work alongside any of them. **Weapons stay and random items are always off** (`g_dm_weapons_stay`, `g_dm_random_items` are forced to `0`, even if changed mid-map), because every trainer relies on items disappearing and respawning as themselves.
+
 ### 📍 **Item Path Training**
 Guides you through items on the map in a randomized sequence. Perfect for learning optimal item routes and map layouts.
 
 - Automatically detects all items from the map (no setup required!)
 - Shows you which item to collect next
 - Customizable: enable/disable weapons, ammo, health, armor, or powerups
+- **Item Run** option: items stay gone once collected until you have the whole set, then your time is shown and everything respawns for the next run
 - Great for learning new maps quickly
 
 ### ⏱️ **Item Timing Training**
@@ -22,7 +25,6 @@ Provides precise feedback on your item respawn timing accuracy.
 - **Timing HUD** with weaning levels: Full countdowns → item names only → match clock only → off
 - **Match clock** to anchor your timing against, the way a real duel does
 - **Silent mode**: suppresses the per-attempt readout so you have to verify yourself; results arrive in the session summary instead
-- Runs **alongside** the Path Trainer if you want the split-attention drill
 - Perfect for competitive duel practice
 
 ### 👻 **Ghost Duel**
@@ -113,6 +115,8 @@ Type `maptrainer` in the console (`~`) to open the trainer menu.
 **Tips:**
 - Disable item types you don't care about (e.g., turn off ammo for faster routes)
 - Use "Combine Health Packs" to treat all health packs as one target
+- Turn on **"Item Run (no respawn)"** to clear the map: nothing you collect comes back until every item in the enabled categories is taken. The run is timed from your first pickup to your last, the result (and your best on this map) is shown, and three seconds later every item respawns so you can go again
+- **Run records:** every finished run is saved to `maptrainer_runs.txt` in the game's working directory (on Steam, the `rerelease` folder) with the date, map, item count and time. A run is **ranked** only when every item type is on, including Stimpacks and Armor Shards, so only like-for-like runs are compared. The ten fastest ranked runs per map are shown under **Main menu → Run Records**, in the run-complete message (new map record, or your placing), and by the `trainer_runs` command
 - Item categories follow the SDK item registry (`IF_WEAPON`, `IF_HEALTH`, etc.); mod items with proper flags respect the matching toggle even if their classname is unconventional
 - Great for learning optimal item collection routes
 
@@ -196,6 +200,7 @@ The trainer is built for **one human practitioner plus bots** on a solo or liste
 | `trainer_debug 1` | Enable debug logging to `trainer.log` |
 | `trainer_debug 0` | Disable debug logging |
 | `trainer_session` | Print the session summary (timing bias, per-item breakdown, control split) |
+| `trainer_runs [map]` | Print the ten fastest ranked Item Runs for this map (or the named map) |
 
 ### Persisted settings (archived cvars)
 
@@ -203,13 +208,14 @@ These are written automatically when you change options in the trainer menu. The
 
 | Cvar | Default | Description |
 |------|---------|-------------|
-| `trainer_mode` | `0` | Active trainers, combinable bit flags: `0` off, `1` path, `2` timing, `3` both |
+| `trainer_mode` | `0` | Item trainer: `0` off, `1` path, `2` timing (an old `3` loads as path; trainers are exclusive) |
 | `trainer_weapons` | `1` | Path trainer: include weapons |
 | `trainer_ammo` | `1` | Path trainer: include ammo |
 | `trainer_health` | `1` | Path trainer: include health |
 | `trainer_armor` | `1` | Path trainer: include armor |
 | `trainer_powerups` | `1` | Path trainer: include powerups |
 | `trainer_combine_health` | `0` | Path trainer: combine health packs |
+| `trainer_path_run_mode` | `0` | Path trainer: Item Run (collected items don't respawn until all are taken) |
 | `trainer_speedometer` | `1` | Speedometer enabled |
 | `trainer_bhop` | `0` | Bhop consistency trainer |
 | `trainer_free_collect` | `1` | Timing: free collect at max armor |
@@ -218,7 +224,7 @@ These are written automatically when you change options in the trainer menu. The
 | `trainer_spawn_intent` | `0` | Spawn trainer enabled (auto-resumes on map load) |
 | `trainer_spawn_random` | `0` | Spawn order: `0` vanilla, `1` random |
 | `trainer_spawn_beacon` | `1` | Spawn trainer beacon beep |
-| `trainer_ghost` | `0` | Ghost Duel enabled (forces the timing trainer on; disables Path, Jump/bhop, and Spawn trainers) |
+| `trainer_ghost` | `0` | Ghost Duel enabled (runs on the timing trainer; like every trainer, switches the others off) |
 | `trainer_ghost_timings` | `1` | Ghost pickups start timing entries (the by-ear drill) |
 | `trainer_ghost_skill` | `3` | Arrival jitter: `0` precise, `1` ±1s, `2` ±2s, `3` ±4s |
 | `trainer_hud_level` | `3` | Timing HUD: `0` off, `1` clock only, `2` names only, `3` full |
@@ -252,7 +258,7 @@ Works with:
 
 ### Timing not working
 - Make sure **Timing Trainer** is enabled (check menu)
-- Path Training and Timing Training are mutually exclusive (enabling one disables the other)
+- Only one trainer runs at a time: enabling Path, Ghost Duel, Jump (bhop) or Spawn turns Timing off (and vice versa)
 - You need to be within pickup radius (64 units) of the item spawn for feedback
 
 ### Bhop trainer showing incorrect timing
@@ -310,6 +316,12 @@ Copyright (c) ZeniMax Media Inc.
 ---
 
 ## 📝 Changelog
+
+### Unreleased
+- **All trainers** — one trainer at a time: enabling any trainer switches the others off (Path and Timing no longer combine); saved settings asking for several are resolved at map load, so a spawn bot no longer returns beside the ghost
+- **Item rules** — weapons stay and random items are locked off at game start, every map load and every frame, with a message if something turns one on
+- **Item Path Training** — Item Run mode: collected items stay gone until you have the whole set, then the run is timed, your best on the map is tracked, and every item respawns for the next run
+- **Item Path Training** — Item Run records: every run saved to `maptrainer_runs.txt` with the date; top 10 ranked runs per map in the new Run Records menu page, the run-complete message and `trainer_runs`
 
 ### v1.2.3 (2026-06-22)
 - **Item Path Training** — optional Stimpacks and Armor Shards toggles to exclude minor pickups from path targets

@@ -15,6 +15,7 @@ using trainer_menu::timing_entry_t;
 using trainer_menu::ghost_entry_t;
 using trainer_menu::jump_entry_t;
 using trainer_menu::spawn_entry_t;
+using trainer_menu::records_entry_t;
 
 // ==================== MENU SYSTEM ====================
 
@@ -27,6 +28,10 @@ void MapTrainer_RestartPathTraining()
 {
 	if (MapTrainer_IsModeActive(trainer_mode_t::PATH))
 	{
+		// Item Run holds respawns on entries in the list being rebuilt; release them first.
+		MapTrainer_ReleaseRunItems();
+		level.map_trainer.run_release_time = 0_ms;
+
 		// Rebuild the item list with new category settings
 		MapTrainer_BuildItemList(level.mapname);
 		
@@ -88,7 +93,10 @@ void MapTrainer_ToggleSpeedometer(edict_t *ent, pmenuhnd_t *p)
 
 void MapTrainer_ToggleTraining(edict_t *ent, pmenuhnd_t *p)
 {
-	MapTrainer_SetModeFlag(trainer_mode_t::PATH, !MapTrainer_IsModeActive(trainer_mode_t::PATH), ent);
+	const bool enable = !MapTrainer_IsModeActive(trainer_mode_t::PATH);
+	if (enable)
+		MapTrainer_DisableOtherTrainers(trainer_logic::trainer_kind_t::PATH, ent);
+	MapTrainer_SetModeFlag(trainer_mode_t::PATH, enable, ent);
 
 	PMenu_Update(ent);
 }
@@ -117,6 +125,20 @@ void MapTrainer_TogglePathArmorShards(edict_t *ent, pmenuhnd_t *p)
 	PMenu_Update(ent);
 }
 
+void MapTrainer_TogglePathRunMode(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.path_run_mode = !level.map_trainer.path_run_mode;
+	// Restart either way: turning it on starts a clean run at the next pickup, turning
+	// it off releases everything the run was holding.
+	MapTrainer_RestartPathTraining();
+	MapTrainer_SaveConfig();
+	if (level.map_trainer.path_run_mode)
+		gi.LocClient_Print(ent, PRINT_HIGH, "Item Run on: collected items stay gone until you have them all, then the run is timed and they all respawn. Pick up an item to begin.");
+	else
+		gi.LocClient_Print(ent, PRINT_HIGH, "Item Run off: items respawn normally.");
+	PMenu_Update(ent);
+}
+
 void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 {
 	if (!ent->client->menu)
@@ -138,6 +160,7 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 		Q_strlcpy(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text, G_Fmt("Combine Health Packs: {}", level.map_trainer.combine_health_packs ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::STIMPACKS)].text, G_Fmt("Stimpacks: {}", level.map_trainer.path_stimpacks_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::STIMPACKS)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::ARMOR_SHARDS)].text, G_Fmt("Armor Shards: {}", level.map_trainer.path_armor_shards_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::ARMOR_SHARDS)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::RUN_MODE)].text, G_Fmt("Item Run (no respawn): {}", level.map_trainer.path_run_mode ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::RUN_MODE)].text));
 		
 		// Re-enable the function pointers
 		entries[entry_index(path_entry_t::WEAPONS)].SelectFunc = MapTrainer_ToggleWeapons;
@@ -148,6 +171,7 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 		entries[entry_index(path_entry_t::COMBINE_HEALTH)].SelectFunc = MapTrainer_ToggleCombineHealthPacks;
 		entries[entry_index(path_entry_t::STIMPACKS)].SelectFunc = MapTrainer_TogglePathStimpacks;
 		entries[entry_index(path_entry_t::ARMOR_SHARDS)].SelectFunc = MapTrainer_TogglePathArmorShards;
+		entries[entry_index(path_entry_t::RUN_MODE)].SelectFunc = MapTrainer_TogglePathRunMode;
 	}
 	else
 	{
@@ -160,6 +184,7 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 		Q_strlcpy(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text, "", sizeof(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::STIMPACKS)].text, "", sizeof(entries[entry_index(path_entry_t::STIMPACKS)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::ARMOR_SHARDS)].text, "", sizeof(entries[entry_index(path_entry_t::ARMOR_SHARDS)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::RUN_MODE)].text, "", sizeof(entries[entry_index(path_entry_t::RUN_MODE)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::BLANK2)].text, "", sizeof(entries[entry_index(path_entry_t::BLANK2)].text));
 		
 		// Disable the function pointers
@@ -171,7 +196,65 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 		entries[entry_index(path_entry_t::COMBINE_HEALTH)].SelectFunc = nullptr;
 		entries[entry_index(path_entry_t::STIMPACKS)].SelectFunc = nullptr;
 		entries[entry_index(path_entry_t::ARMOR_SHARDS)].SelectFunc = nullptr;
+		entries[entry_index(path_entry_t::RUN_MODE)].SelectFunc = nullptr;
 	}
+}
+
+// ==================== RUN RECORDS PAGE ====================
+
+void MapTrainer_UpdateRunRecordsSubmenu(edict_t *ent)
+{
+	if (!ent->client->menu)
+		return;
+
+	pmenu_t *entries = ent->client->menu->entries;
+	Q_strlcpy(entries[entry_index(records_entry_t::HEADER)].text, G_Fmt("Run Records: {}", level.mapname).data(),
+		sizeof(entries[entry_index(records_entry_t::HEADER)].text));
+
+	const int32_t first_row = entry_index(records_entry_t::ROW1);
+	for (int32_t i = 0; i < trainer_config::RUN_RECORDS_MAX; i++)
+	{
+		pmenu_t &row = entries[first_row + i];
+		MapTrainer_RecordsFormatMenuRow(i, row.text, sizeof(row.text));
+		row.align = PMENU_ALIGN_LEFT;
+		row.SelectFunc = nullptr;
+	}
+	if (MapTrainer_RecordsCount() == 0)
+	{
+		Q_strlcpy(entries[first_row].text, "No ranked runs yet", sizeof(entries[first_row].text));
+		entries[first_row].align = PMENU_ALIGN_CENTER;
+	}
+}
+
+static_assert(entry_index(records_entry_t::ROW10) - entry_index(records_entry_t::ROW1) + 1 ==
+	trainer_config::RUN_RECORDS_MAX, "one Run Records row per kept record");
+
+pmenu_t maptrainer_runrecords_submenu[] = {
+	{ "Run Records", PMENU_ALIGN_CENTER, nullptr },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Ranked: every item type on", PMENU_ALIGN_CENTER, nullptr },
+	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
+	{ TRAINER_VERSION_DISPLAY, PMENU_ALIGN_CENTER, nullptr }
+};
+
+static_assert(sizeof(maptrainer_runrecords_submenu) / sizeof(pmenu_t) ==
+	entry_index(records_entry_t::VERSION) + 1, "Run Records rows match records_entry_t");
+
+void MapTrainer_OpenRunRecordsSubmenu(edict_t *ent, pmenuhnd_t *p)
+{
+	PMenu_Open(ent, maptrainer_runrecords_submenu, entry_index(records_entry_t::BACK),
+		sizeof(maptrainer_runrecords_submenu) / sizeof(pmenu_t), nullptr, MapTrainer_UpdateRunRecordsSubmenu);
 }
 
 pmenu_t maptrainer_itempathing_submenu[] = {
@@ -186,6 +269,7 @@ pmenu_t maptrainer_itempathing_submenu[] = {
 	{ "Combine Health Packs: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleCombineHealthPacks },
 	{ "Stimpacks: ON", PMENU_ALIGN_LEFT, MapTrainer_TogglePathStimpacks },
 	{ "Armor Shards: ON", PMENU_ALIGN_LEFT, MapTrainer_TogglePathArmorShards },
+	{ "Item Run (no respawn): OFF", PMENU_ALIGN_LEFT, MapTrainer_TogglePathRunMode },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
@@ -202,7 +286,12 @@ void MapTrainer_OpenItemPathingSubmenu(edict_t *ent, pmenuhnd_t *p)
 
 void MapTrainer_ToggleTiming(edict_t *ent, pmenuhnd_t *p)
 {
-	MapTrainer_SetModeFlag(trainer_mode_t::TIMING, !MapTrainer_IsModeActive(trainer_mode_t::TIMING), ent);
+	const bool enable = !MapTrainer_IsModeActive(trainer_mode_t::TIMING);
+	if (enable)
+		MapTrainer_DisableOtherTrainers(trainer_logic::trainer_kind_t::TIMING, ent);
+	else if (level.map_trainer.ghost_enabled)
+		MapTrainer_SetGhostEnabled(false, ent); // the timing it is turning off is the ghost's
+	MapTrainer_SetModeFlag(trainer_mode_t::TIMING, enable, ent);
 
 	PMenu_Update(ent);
 }
@@ -357,7 +446,10 @@ void MapTrainer_LoadPosition(edict_t *ent, pmenuhnd_t *p)
 
 void MapTrainer_ToggleBhopTrainer(edict_t *ent, pmenuhnd_t *p)
 {
-    level.map_trainer.bhop_enabled = !level.map_trainer.bhop_enabled;
+    const bool enable = !level.map_trainer.bhop_enabled;
+    if (enable)
+        MapTrainer_DisableOtherTrainers(trainer_logic::trainer_kind_t::BHOP, ent);
+    level.map_trainer.bhop_enabled = enable;
     gi.LocClient_Print(ent, PRINT_HIGH, "Bhop trainer {}", level.map_trainer.bhop_enabled ? "enabled" : "disabled");
     MapTrainer_SaveConfig();
     PMenu_Update(ent);
@@ -406,6 +498,7 @@ void MapTrainer_ToggleSpawnTrainer(edict_t *ent, pmenuhnd_t *p)
 	}
 	else
 	{
+		MapTrainer_DisableOtherTrainers(trainer_logic::trainer_kind_t::SPAWN, ent);
 		level.map_trainer.spawn_trainer_intent = true;
 		if (MapTrainer_EnableSpawnTrainer(ent))
 			gi.LocClient_Print(ent, PRINT_HIGH, "Spawn Trainer enabled.");
@@ -680,7 +773,7 @@ pmenu_t maptrainer_menu[] = {
 	{ "Spawn Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenSpawnTrainerSubmenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Speedometer: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleSpeedometer },
-	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Run Records", PMENU_ALIGN_LEFT, MapTrainer_OpenRunRecordsSubmenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Close Menu", PMENU_ALIGN_LEFT, MapTrainer_MenuClose },
 	{ "", PMENU_ALIGN_CENTER, nullptr },

@@ -248,6 +248,7 @@
     <ClCompile Include="trainer\trainer_core.cpp" />
     <ClCompile Include="trainer\trainer_cvars.cpp" />
     <ClCompile Include="trainer\trainer_debug.cpp" />
+    <ClCompile Include="trainer\trainer_records.cpp" />
     <ClCompile Include="trainer\trainer_path.cpp" />
     <ClCompile Include="trainer\trainer_timing.cpp" />
     <ClCompile Include="trainer\trainer_ghost.cpp" />

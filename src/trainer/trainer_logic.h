@@ -47,6 +47,75 @@ bool ShouldSkipUniqueTypeForPick(int32_t unique_item_count, const char *unique_c
 
 bool IsPathTrainingItemIncluded(const char *class_name, bool stimpacks_enabled, bool armor_shards_enabled);
 
+// ==================== EXCLUSIVE TRAINERS ====================
+//
+// Only one trainer runs at a time. Ghost Duel uses the timing trainer internally, but
+// that is part of Ghost Duel, not a second trainer. The speedometer, savepos/loadpos and
+// each trainer's own options are not trainers and are never switched off by this rule.
+enum class trainer_kind_t : int32_t
+{
+	NONE = 0,
+	PATH,
+	TIMING,
+	GHOST,
+	BHOP,
+	SPAWN
+};
+
+struct trainer_selection_t
+{
+	bool path = false;
+	bool timing = false;
+	bool ghost = false;
+	bool bhop = false;
+	bool spawn = false;
+};
+
+// The one trainer that survives when saved settings ask for several (an old
+// trainer_mode 3, or a ghost saved alongside the spawn trainer). Priority:
+// ghost > path > timing > spawn > bhop.
+trainer_kind_t ResolveExclusiveTrainer(const trainer_selection_t &selection);
+
+// ==================== ITEM RUN ====================
+//
+// Item Run is path mode with respawns held: every item collected stays gone until the
+// whole set has been collected, then the run is timed and everything comes back.
+
+// How many of the run's items are still to collect.
+int32_t RunItemsRemaining(const bool *collected, int32_t count);
+
+// Run duration as m:ss.t (tenths, rounded down), e.g. 83456 ms -> "1:23.4".
+void FormatRunTime(int64_t run_ms, char *out, size_t out_size);
+
+// best_ms <= 0 means no previous run on this map, so any finished run is a best.
+bool IsNewBestRun(int64_t run_ms, int64_t best_ms);
+
+// A completed run as stored in the records file.
+struct run_record_t
+{
+	int64_t run_ms = 0;
+	int32_t items = 0;
+	char date[20] = {}; // "YYYY-MM-DD HH:MM:SS"
+};
+
+// Only runs over the full item set are comparable, so only those are ranked: every
+// category plus stimpacks and armor shards. Combining health packs changes the target
+// order, not which items are in the run, so it does not matter here.
+bool IsRunRanked(const category_toggles_t &toggles, bool stimpacks_enabled, bool armor_shards_enabled);
+
+// One records-file line (no newline): date<TAB>map<TAB>items<TAB>time_ms<TAB>ranked.
+void FormatRunRecordLine(const char *date, const char *map, int32_t items, int64_t run_ms, bool ranked,
+	char *out, size_t out_size);
+
+// Parses a records-file line. False for comments (#), blank and malformed lines, so a
+// hand-edited file can never stop the game.
+bool ParseRunRecordLine(const char *line, char *map_out, size_t map_size, run_record_t *out, bool *ranked_out);
+
+// Inserts into a fastest-first table of at most `max` rows. Returns the 1-based rank,
+// or 0 when the run is too slow to make the table. An equal time ranks below the
+// earlier run.
+int32_t InsertTopRun(run_record_t *table, int32_t *count, int32_t max, const run_record_t &record);
+
 // ==================== CONTROL STATE ====================
 //
 // Declared before the ghost section because the ghost's routing policy is keyed on it.

@@ -5,6 +5,8 @@
 
 #include <cmath>
 #include <cctype>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 namespace trainer_logic
@@ -214,6 +216,162 @@ bool IsPathTrainingItemIncluded(const char *class_name, bool stimpacks_enabled, 
 		return armor_shards_enabled;
 
 	return true;
+}
+
+// ==================== EXCLUSIVE TRAINERS ====================
+
+trainer_kind_t ResolveExclusiveTrainer(const trainer_selection_t &selection)
+{
+	if (selection.ghost)
+		return trainer_kind_t::GHOST;
+	if (selection.path)
+		return trainer_kind_t::PATH;
+	if (selection.timing)
+		return trainer_kind_t::TIMING;
+	if (selection.spawn)
+		return trainer_kind_t::SPAWN;
+	if (selection.bhop)
+		return trainer_kind_t::BHOP;
+	return trainer_kind_t::NONE;
+}
+
+// ==================== ITEM RUN ====================
+
+int32_t RunItemsRemaining(const bool *collected, int32_t count)
+{
+	if (!collected || count <= 0)
+		return 0;
+
+	int32_t remaining = 0;
+	for (int32_t i = 0; i < count; i++)
+		if (!collected[i])
+			remaining++;
+	return remaining;
+}
+
+void FormatRunTime(int64_t run_ms, char *out, size_t out_size)
+{
+	if (!out || out_size == 0)
+		return;
+
+	if (run_ms < 0)
+		run_ms = 0;
+
+	const int64_t tenths = run_ms / 100;
+	const int64_t minutes = tenths / 600;
+	const int64_t seconds = (tenths / 10) % 60;
+	std::snprintf(out, out_size, "%lld:%02lld.%lld", static_cast<long long>(minutes),
+		static_cast<long long>(seconds), static_cast<long long>(tenths % 10));
+}
+
+bool IsNewBestRun(int64_t run_ms, int64_t best_ms)
+{
+	return best_ms <= 0 || run_ms < best_ms;
+}
+
+bool IsRunRanked(const category_toggles_t &toggles, bool stimpacks_enabled, bool armor_shards_enabled)
+{
+	return toggles.weapons && toggles.ammo && toggles.health && toggles.armor && toggles.powerups &&
+		stimpacks_enabled && armor_shards_enabled;
+}
+
+void FormatRunRecordLine(const char *date, const char *map, int32_t items, int64_t run_ms, bool ranked,
+	char *out, size_t out_size)
+{
+	if (!out || out_size == 0)
+		return;
+
+	std::snprintf(out, out_size, "%s\t%s\t%d\t%lld\t%d", date ? date : "", map ? map : "",
+		static_cast<int>(items), static_cast<long long>(run_ms), ranked ? 1 : 0);
+}
+
+namespace
+{
+// Copies the next tab-separated field into out; false if it is empty or too long.
+bool next_field(const char *&cursor, char *out, size_t out_size)
+{
+	const char *end = std::strchr(cursor, '\t');
+	const size_t length = end ? static_cast<size_t>(end - cursor) : std::strlen(cursor);
+	if (length == 0 || length >= out_size)
+		return false;
+
+	std::memcpy(out, cursor, length);
+	out[length] = '\0';
+	cursor = end ? end + 1 : cursor + length;
+	return true;
+}
+
+bool parse_int64(const char *text, int64_t *out)
+{
+	char *end = nullptr;
+	const long long value = std::strtoll(text, &end, 10);
+	if (end == text || *end != '\0' || value < 0)
+		return false;
+	*out = value;
+	return true;
+}
+} // namespace
+
+bool ParseRunRecordLine(const char *line, char *map_out, size_t map_size, run_record_t *out, bool *ranked_out)
+{
+	if (!line || !map_out || map_size == 0 || !out)
+		return false;
+
+	// Strip the line ending (the file may have been edited on Windows).
+	char buffer[256];
+	std::snprintf(buffer, sizeof(buffer), "%s", line);
+	for (size_t n = std::strlen(buffer); n > 0 && (buffer[n - 1] == '\n' || buffer[n - 1] == '\r'); n--)
+		buffer[n - 1] = '\0';
+
+	if (buffer[0] == '\0' || buffer[0] == '#')
+		return false;
+
+	const char *cursor = buffer;
+	char date[sizeof(out->date)];
+	char map[64];
+	char items[16];
+	char run_ms[24];
+	char ranked[4];
+	if (!next_field(cursor, date, sizeof(date)) || !next_field(cursor, map, sizeof(map)) ||
+		!next_field(cursor, items, sizeof(items)) || !next_field(cursor, run_ms, sizeof(run_ms)) ||
+		!next_field(cursor, ranked, sizeof(ranked)) || *cursor != '\0')
+		return false;
+
+	int64_t items_value = 0;
+	int64_t run_ms_value = 0;
+	if (!parse_int64(items, &items_value) || !parse_int64(run_ms, &run_ms_value) || items_value > 100000)
+		return false;
+	if (std::strcmp(ranked, "0") != 0 && std::strcmp(ranked, "1") != 0)
+		return false;
+
+	std::snprintf(map_out, map_size, "%s", map);
+	*out = {};
+	out->run_ms = run_ms_value;
+	out->items = static_cast<int32_t>(items_value);
+	std::snprintf(out->date, sizeof(out->date), "%s", date);
+	if (ranked_out)
+		*ranked_out = ranked[0] == '1';
+	return true;
+}
+
+int32_t InsertTopRun(run_record_t *table, int32_t *count, int32_t max, const run_record_t &record)
+{
+	if (!table || !count || max <= 0 || *count < 0 || *count > max)
+		return 0;
+
+	int32_t position = 0;
+	while (position < *count && table[position].run_ms <= record.run_ms)
+		position++;
+	if (position >= max)
+		return 0;
+
+	const int32_t last = (*count < max) ? *count : max - 1;
+	for (int32_t i = last; i > position; i--)
+		table[i] = table[i - 1];
+	table[position] = record;
+	if (*count < max)
+		(*count)++;
+	return position + 1;
 }
 
 // ==================== GHOST DUEL OPPONENT ====================

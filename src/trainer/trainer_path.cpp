@@ -6,6 +6,8 @@
 #include "trainer_config.h"
 #include "trainer_logic.h"
 
+#include <memory>
+
 // ==================== PATH TRAINING FEATURE ====================
 
 bool MapTrainer_IsItemAvailable(int32_t item_index)
@@ -19,6 +21,27 @@ bool MapTrainer_IsItemAvailable(int32_t item_index)
 		return false;
 
 	return !(ent->svflags & SVF_RESPAWNING) && ent->solid != SOLID_NOT;
+}
+
+// Item Run: an item collected this run is never a target again until the run ends, even
+// if something brought it back early.
+static bool MapTrainer_IsItemTargetable(int32_t item_index)
+{
+	if (!MapTrainer_IsItemAvailable(item_index))
+		return false;
+
+	return !(level.map_trainer.path_run_mode && level.map_trainer.items[item_index].collected_in_run);
+}
+
+static int32_t MapTrainer_RunItemsRemaining()
+{
+	if (!level.map_trainer.items || level.map_trainer.item_count <= 0)
+		return 0;
+
+	auto collected = std::make_unique<bool[]>(level.map_trainer.item_count);
+	for (int32_t i = 0; i < level.map_trainer.item_count; i++)
+		collected[i] = level.map_trainer.items[i].collected_in_run;
+	return trainer_logic::RunItemsRemaining(collected.get(), level.map_trainer.item_count);
 }
 
 void MapTrainer_PickNewTarget()
@@ -36,35 +59,44 @@ void MapTrainer_PickNewTarget()
 	
 	// Build a list of available unique item types
 	std::vector<int32_t> available_unique_types;
-	for (int32_t i = 0; i < level.map_trainer.unique_item_count; i++)
+	auto collect_types = [&](bool allow_repeat_type)
 	{
-		map_trainer_unique_item_t *unique_item = &level.map_trainer.unique_items[i];
-		
-		// Skip if this is the same type as previous (if we have more than one type)
-		if (trainer_logic::ShouldSkipUniqueTypeForPick(level.map_trainer.unique_item_count,
-			unique_item->class_name, previous_class_name))
+		for (int32_t i = 0; i < level.map_trainer.unique_item_count; i++)
 		{
-			continue;
-		}
-		
-		// Category toggles are applied at BuildItemList time (rebuilt on every toggle).
-		// Check if any instance of this item type is available
-		bool has_available_instance = false;
-		for (int32_t j = 0; j < unique_item->instance_count; j++)
-		{
-			const int32_t item_index = unique_item->item_indices[j];
-			if (MapTrainer_IsItemAvailable(item_index))
+			map_trainer_unique_item_t *unique_item = &level.map_trainer.unique_items[i];
+			
+			// Skip if this is the same type as previous (if we have more than one type)
+			if (!allow_repeat_type && trainer_logic::ShouldSkipUniqueTypeForPick(level.map_trainer.unique_item_count,
+				unique_item->class_name, previous_class_name))
 			{
-				has_available_instance = true;
-				break;
+				continue;
+			}
+			
+			// Category toggles are applied at BuildItemList time (rebuilt on every toggle).
+			// Check if any instance of this item type is available
+			bool has_available_instance = false;
+			for (int32_t j = 0; j < unique_item->instance_count; j++)
+			{
+				const int32_t item_index = unique_item->item_indices[j];
+				if (MapTrainer_IsItemTargetable(item_index))
+				{
+					has_available_instance = true;
+					break;
+				}
+			}
+			
+			if (has_available_instance)
+			{
+				available_unique_types.push_back(i);
 			}
 		}
-		
-		if (has_available_instance)
-		{
-			available_unique_types.push_back(i);
-		}
-	}
+	};
+	collect_types(false);
+
+	// Item Run: near the end of a run the only items left can be the type just taken
+	// (the last two shards). Nothing respawns to break the tie, so allow the repeat.
+	if (available_unique_types.empty() && level.map_trainer.path_run_mode)
+		collect_types(true);
 	
 	// If no available types found, inform player and wait for respawns
 	if (available_unique_types.empty())
@@ -90,7 +122,7 @@ void MapTrainer_PickNewTarget()
 	for (int32_t j = 0; j < unique_item->instance_count; j++)
 	{
 		const int32_t item_index = unique_item->item_indices[j];
-		if (MapTrainer_IsItemAvailable(item_index))
+		if (MapTrainer_IsItemTargetable(item_index))
 			available_instances.push_back(item_index);
 	}
 	
@@ -127,7 +159,11 @@ void MapTrainer_PickNewTarget()
 			edict_t *player = &g_edicts[1 + i];
 			if (!player->inuse || !player->client)
 				continue;
-			gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Travel from {} to {}", previous_display_name, target_display_name).data());
+			if (level.map_trainer.path_run_mode)
+				gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Travel from {} to {}\n{} left", previous_display_name,
+					target_display_name, MapTrainer_RunItemsRemaining()).data());
+			else
+				gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Travel from {} to {}", previous_display_name, target_display_name).data());
 		}
 	}
 	// Note: No message on first target selection - handled in MapTrainer_OnItemPickup
@@ -160,6 +196,179 @@ bool MapTrainer_IsTargetItem(edict_t *ent)
 	return false;
 }
 
+// ==================== ITEM RUN ====================
+
+static void MapTrainer_PrintCenterToAll(const char *message)
+{
+	for (uint32_t i = 0; i < game.maxclients; i++)
+	{
+		edict_t *player = &g_edicts[1 + i];
+		if (!player->inuse || !player->client)
+			continue;
+		gi.LocClient_Print(player, PRINT_CENTER, message);
+	}
+}
+
+static void MapTrainer_MarkRunCollected(edict_t *item_ent)
+{
+	if (!level.map_trainer.path_run_mode || !level.map_trainer.items)
+		return;
+
+	for (int32_t i = 0; i < level.map_trainer.item_count; i++)
+	{
+		if (level.map_trainer.items[i].ent == item_ent)
+		{
+			level.map_trainer.items[i].collected_in_run = true;
+			return;
+		}
+	}
+}
+
+// Every item is collected: report the time, then hold everything for a moment so the
+// result can be read before MapTrainer_PathRunFrame brings the items back. No target is
+// set and first_pickup stays false meanwhile, so the pickup gate in Touch_Item blocks
+// everything until the release.
+static void MapTrainer_CompleteRun()
+{
+	const int64_t run_ms = (level.time - level.map_trainer.run_start_time).milliseconds();
+	const bool new_best = trainer_logic::IsNewBestRun(run_ms, level.map_trainer.run_best_time.milliseconds());
+	if (new_best)
+		level.map_trainer.run_best_time = level.time - level.map_trainer.run_start_time;
+
+	char run_time[32];
+	char best_time[32];
+	trainer_logic::FormatRunTime(run_ms, run_time, sizeof(run_time));
+	trainer_logic::FormatRunTime(level.map_trainer.run_best_time.milliseconds(), best_time, sizeof(best_time));
+
+	char best_line[64];
+	if (new_best)
+		Q_strlcpy(best_line, "New best!", sizeof(best_line));
+	else
+		G_FmtTo(best_line, "Best: {}", best_time);
+
+	// Save the run. Only runs over the full item set are comparable, so only those rank.
+	const trainer_logic::category_toggles_t toggles = {
+		level.map_trainer.weapons_enabled, level.map_trainer.ammo_enabled, level.map_trainer.health_enabled,
+		level.map_trainer.armor_enabled, level.map_trainer.powerups_enabled };
+	const bool ranked = trainer_logic::IsRunRanked(toggles, level.map_trainer.path_stimpacks_enabled,
+		level.map_trainer.path_armor_shards_enabled);
+	const int32_t rank = MapTrainer_RecordsAddRun(run_ms, level.map_trainer.item_count, ranked);
+
+	char record_time[32];
+	trainer_logic::FormatRunTime(MapTrainer_RecordsBestMs(), record_time, sizeof(record_time));
+	char result_lines[128];
+	char console_rank[48];
+	if (!ranked)
+	{
+		// Unranked runs still get the session best on this map.
+		G_FmtTo(result_lines, "Unranked: turn every item type on to rank\n{}", best_line);
+		Q_strlcpy(console_rank, "unranked", sizeof(console_rank));
+	}
+	else if (rank == 1)
+	{
+		Q_strlcpy(result_lines, "New map record!", sizeof(result_lines));
+		Q_strlcpy(console_rank, "ranked #1, map record", sizeof(console_rank));
+	}
+	else if (rank > 0)
+	{
+		G_FmtTo(result_lines, "#{} on {} (record {})", rank, level.mapname, record_time);
+		G_FmtTo(console_rank, "ranked #{}", rank);
+	}
+	else
+	{
+		G_FmtTo(result_lines, "Record: {}", record_time);
+		G_FmtTo(console_rank, "outside the top {}", trainer_config::RUN_RECORDS_MAX);
+	}
+
+	MapTrainer_PrintCenterToAll(G_Fmt("Run {} complete!\n{} items in {}\n{}\nItems respawn in {:.0f} seconds",
+		level.map_trainer.run_number, level.map_trainer.item_count, run_time, result_lines,
+		trainer_config::ITEM_RUN_RESPAWN_DELAY_SEC).data());
+
+	// A console line too, so a session's runs can be compared afterwards.
+	for (uint32_t i = 0; i < game.maxclients; i++)
+	{
+		edict_t *player = &g_edicts[1 + i];
+		if (!player->inuse || !player->client)
+			continue;
+		gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("Item run {} on {}: {} items in {} - {}",
+			level.map_trainer.run_number, level.mapname, level.map_trainer.item_count, run_time,
+			console_rank).data());
+	}
+	TrainerLog("RUN", "run %d complete: %d items in %s (%s)", level.map_trainer.run_number,
+		level.map_trainer.item_count, run_time, console_rank);
+
+	level.map_trainer.current_target_index = -1;
+	level.map_trainer.previous_target_index = -1;
+	level.map_trainer.first_pickup = false;
+	level.map_trainer.run_release_time = level.time + gtime_t::from_sec(trainer_config::ITEM_RUN_RESPAWN_DELAY_SEC);
+}
+
+void MapTrainer_ReleaseRunItems()
+{
+	if (!level.map_trainer.items)
+		return;
+
+	for (int32_t i = 0; i < level.map_trainer.item_count; i++)
+	{
+		map_trainer_item_t *item = &level.map_trainer.items[i];
+		if (!item->collected_in_run)
+			continue;
+		item->collected_in_run = false;
+
+		edict_t *ent = item->ent;
+		if (!ent || !ent->inuse)
+			continue;
+
+		if (ent->svflags & SVF_RESPAWNING)
+		{
+			// Held by MapTrainer_PathRunFrame: let the stock DoRespawn run now.
+			ent->nextthink = level.time;
+		}
+		else if ((ent->svflags & SVF_NOCLIENT) && ent->item && (ent->item->tag & HEALTH_TIMED))
+		{
+			// A megahealth still waiting for its owner's health to drain (MegaHealth_think)
+			// has not scheduled its respawn yet. Schedule it for now.
+			SetRespawn(ent, 0_ms);
+		}
+	}
+}
+
+void MapTrainer_PathRunFrame()
+{
+	if (!level.map_trainer.initialized || !level.map_trainer.items || !MapTrainer_IsModeActive(trainer_mode_t::PATH))
+		return;
+
+	// A finished run's pause is over: bring everything back and wait for the next first pickup.
+	if (level.map_trainer.run_release_time > 0_ms && level.time >= level.map_trainer.run_release_time)
+	{
+		level.map_trainer.run_release_time = 0_ms;
+		MapTrainer_ReleaseRunItems();
+		level.map_trainer.first_pickup = true;
+		MapTrainer_PrintCenterToAll(G_Fmt("Items are back.\nPick up any item to start run {}.",
+			level.map_trainer.run_number + 1).data());
+		return;
+	}
+
+	if (!level.map_trainer.path_run_mode)
+		return;
+
+	// Hold every collected item's respawn. Pushing nextthink a second ahead each frame,
+	// rather than parking it far away, means anything that stops calling this (run mode
+	// off, path mode off, a rebuilt item list) lets the items come back on their own
+	// within a second. A megahealth reaches this state once its owner's bonus health has
+	// drained and MegaHealth_think calls SetRespawn.
+	const gtime_t hold_until = level.time + 1_sec;
+	for (int32_t i = 0; i < level.map_trainer.item_count; i++)
+	{
+		const map_trainer_item_t *item = &level.map_trainer.items[i];
+		edict_t *ent = item->ent;
+		if (!item->collected_in_run || !ent || !ent->inuse || !(ent->svflags & SVF_RESPAWNING))
+			continue;
+		if (ent->nextthink < hold_until)
+			ent->nextthink = hold_until;
+	}
+}
+
 void MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player)
 {
 	if (!level.map_trainer.initialized)
@@ -186,6 +395,19 @@ void MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player)
 		
 		// Set the source item BEFORE picking new target
 		level.map_trainer.previous_target_index = source_index;
+
+		// Item Run: the first pickup starts the clock and is the run's first item.
+		if (level.map_trainer.path_run_mode)
+		{
+			level.map_trainer.run_number++;
+			level.map_trainer.run_start_time = level.time;
+			MapTrainer_MarkRunCollected(item_ent);
+			if (MapTrainer_RunItemsRemaining() == 0)
+			{
+				MapTrainer_CompleteRun();
+				return;
+			}
+		}
 		
 		// Pick new target
 		MapTrainer_PickNewTarget();
@@ -196,7 +418,11 @@ void MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player)
 		{
 			map_trainer_item_t *target = &level.map_trainer.items[level.map_trainer.current_target_index];
 			const char *target_name = MapTrainer_GetDisplayFriendlyName(target->class_name, target->friendly_name);
-			gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Training started!\nGo to: {}", target_name).data());
+			if (level.map_trainer.path_run_mode)
+				gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Run {} started - {} items\nGo to: {}",
+					level.map_trainer.run_number, level.map_trainer.item_count, target_name).data());
+			else
+				gi.LocClient_Print(player, PRINT_CENTER, G_Fmt("Training started!\nGo to: {}", target_name).data());
 		}
 	}
 	else if (MapTrainer_IsTargetItem(item_ent))
@@ -204,6 +430,16 @@ void MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player)
 		// Target item picked up!
 		// The current target becomes the new source
 		level.map_trainer.previous_target_index = level.map_trainer.current_target_index;
+
+		if (level.map_trainer.path_run_mode)
+		{
+			MapTrainer_MarkRunCollected(item_ent);
+			if (MapTrainer_RunItemsRemaining() == 0)
+			{
+				MapTrainer_CompleteRun();
+				return;
+			}
+		}
 		
 		// Pick new target
 		MapTrainer_PickNewTarget();
@@ -214,13 +450,16 @@ void MapTrainer_ShowWelcomeMessage(edict_t *player)
 {
 	if (MapTrainer_IsModeActive(trainer_mode_t::PATH) && level.map_trainer.initialized)
 	{
-		gi.LocClient_Print(player, PRINT_CENTER, "Map items loaded.\nPlease pick up an item to begin.");
+		if (level.map_trainer.path_run_mode)
+			gi.LocClient_Print(player, PRINT_CENTER, "Item Run: items stay gone until you have them all.\nPick up an item to begin.");
+		else
+			gi.LocClient_Print(player, PRINT_CENTER, "Map items loaded.\nPlease pick up an item to begin.");
 	}
 	else if (MapTrainer_IsModeActive(trainer_mode_t::PATH) && !level.map_trainer.initialized)
 	{
 		gi.LocClient_Print(player, PRINT_CENTER, "No items found in map.\nPath trainer disabled.");
 		// Auto-disable path training if items weren't found (persist so it doesn't re-arm
-		// next map). Clears only the PATH flag - any timing/ghost work keeps running.
+		// next map). Trainers are exclusive, so nothing else was running alongside it.
 		MapTrainer_SetModeFlag(trainer_mode_t::PATH, false);
 	}
 	else
