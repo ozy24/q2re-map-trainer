@@ -218,6 +218,23 @@ bool IsPathTrainingItemIncluded(const char *class_name, bool stimpacks_enabled, 
 	return true;
 }
 
+// ==================== EXCLUSIVE TRAINERS ====================
+
+trainer_kind_t ResolveExclusiveTrainer(const trainer_selection_t &selection)
+{
+	if (selection.ghost)
+		return trainer_kind_t::GHOST;
+	if (selection.path)
+		return trainer_kind_t::PATH;
+	if (selection.timing)
+		return trainer_kind_t::TIMING;
+	if (selection.spawn)
+		return trainer_kind_t::SPAWN;
+	if (selection.bhop)
+		return trainer_kind_t::BHOP;
+	return trainer_kind_t::NONE;
+}
+
 // ==================== ITEM RUN ====================
 
 int32_t RunItemsRemaining(const bool *collected, int32_t count)

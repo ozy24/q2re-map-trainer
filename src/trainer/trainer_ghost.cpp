@@ -515,23 +515,14 @@ void MapTrainer_SetGhostEnabled(bool enabled, edict_t *notify)
 
 	if (enabled)
 	{
+		// Like every trainer, Ghost Duel runs alone. (Path Trainer was also actively
+		// incompatible: its pickup gate blocks everything but the current goal item, so
+		// the player could almost never contest what the ghost was going for.)
+		MapTrainer_DisableOtherTrainers(trainer_logic::trainer_kind_t::GHOST, notify);
+
 		// The ghost's whole output is timing pressure, which is meaningless unless the
 		// timing trainer is evaluating. Turn it on rather than silently doing nothing.
 		MapTrainer_SetModeFlag(trainer_mode_t::TIMING, true, notify);
-
-		// Ghost Duel is exclusive of the other item/movement trainers. Path Trainer in
-		// particular is actively incompatible: its pickup gate (g_items.cpp Touch_Item)
-		// blocks the player from taking anything but the current goal item, while the
-		// ghost races for any major on the map - running both meant the player could
-		// almost never contest what the ghost was going for. Jump/bhop and Spawn Trainer
-		// do not conflict mechanically, but Ghost Duel is meant to run alone.
-		MapTrainer_SetModeFlag(trainer_mode_t::PATH, false, notify);
-		level.map_trainer.bhop_enabled = false;
-		if (level.map_trainer.spawn_trainer_enabled)
-		{
-			MapTrainer_DisableSpawnTrainer();
-			level.map_trainer.spawn_trainer_intent = false;
-		}
 
 		ghost = {};
 		ghost.health = GHOST_HEALTH_START;

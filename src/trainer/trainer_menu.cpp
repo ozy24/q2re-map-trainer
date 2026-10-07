@@ -93,7 +93,10 @@ void MapTrainer_ToggleSpeedometer(edict_t *ent, pmenuhnd_t *p)
 
 void MapTrainer_ToggleTraining(edict_t *ent, pmenuhnd_t *p)
 {
-	MapTrainer_SetModeFlag(trainer_mode_t::PATH, !MapTrainer_IsModeActive(trainer_mode_t::PATH), ent);
+	const bool enable = !MapTrainer_IsModeActive(trainer_mode_t::PATH);
+	if (enable)
+		MapTrainer_DisableOtherTrainers(trainer_logic::trainer_kind_t::PATH, ent);
+	MapTrainer_SetModeFlag(trainer_mode_t::PATH, enable, ent);
 
 	PMenu_Update(ent);
 }
@@ -283,7 +286,12 @@ void MapTrainer_OpenItemPathingSubmenu(edict_t *ent, pmenuhnd_t *p)
 
 void MapTrainer_ToggleTiming(edict_t *ent, pmenuhnd_t *p)
 {
-	MapTrainer_SetModeFlag(trainer_mode_t::TIMING, !MapTrainer_IsModeActive(trainer_mode_t::TIMING), ent);
+	const bool enable = !MapTrainer_IsModeActive(trainer_mode_t::TIMING);
+	if (enable)
+		MapTrainer_DisableOtherTrainers(trainer_logic::trainer_kind_t::TIMING, ent);
+	else if (level.map_trainer.ghost_enabled)
+		MapTrainer_SetGhostEnabled(false, ent); // the timing it is turning off is the ghost's
+	MapTrainer_SetModeFlag(trainer_mode_t::TIMING, enable, ent);
 
 	PMenu_Update(ent);
 }
@@ -438,7 +446,10 @@ void MapTrainer_LoadPosition(edict_t *ent, pmenuhnd_t *p)
 
 void MapTrainer_ToggleBhopTrainer(edict_t *ent, pmenuhnd_t *p)
 {
-    level.map_trainer.bhop_enabled = !level.map_trainer.bhop_enabled;
+    const bool enable = !level.map_trainer.bhop_enabled;
+    if (enable)
+        MapTrainer_DisableOtherTrainers(trainer_logic::trainer_kind_t::BHOP, ent);
+    level.map_trainer.bhop_enabled = enable;
     gi.LocClient_Print(ent, PRINT_HIGH, "Bhop trainer {}", level.map_trainer.bhop_enabled ? "enabled" : "disabled");
     MapTrainer_SaveConfig();
     PMenu_Update(ent);
@@ -487,6 +498,7 @@ void MapTrainer_ToggleSpawnTrainer(edict_t *ent, pmenuhnd_t *p)
 	}
 	else
 	{
+		MapTrainer_DisableOtherTrainers(trainer_logic::trainer_kind_t::SPAWN, ent);
 		level.map_trainer.spawn_trainer_intent = true;
 		if (MapTrainer_EnableSpawnTrainer(ent))
 			gi.LocClient_Print(ent, PRINT_HIGH, "Spawn Trainer enabled.");

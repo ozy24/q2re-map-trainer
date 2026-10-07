@@ -74,6 +74,10 @@ void MapTrainer_RegisterCvars()
 	trainer_hud_level = gi.cvar("trainer_hud_level", "3", CVAR_ARCHIVE);
 	trainer_match_length = gi.cvar("trainer_match_length", "600", CVAR_ARCHIVE);
 	trainer_silent_feedback = gi.cvar("trainer_silent_feedback", "0", CVAR_ARCHIVE);
+
+	// Random items also applies when a map spawns its items, which happens before
+	// MapTrainer_Init runs, so force it off here too (InitGame, before the first map).
+	MapTrainer_EnforceItemRules(false);
 }
 
 void MapTrainer_LoadFromCvars()

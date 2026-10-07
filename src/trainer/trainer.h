@@ -11,6 +11,10 @@ struct edict_t;
 struct pmenuhnd_t;
 struct pmove_t;
 struct gitem_t;
+namespace trainer_logic
+{
+enum class trainer_kind_t : int32_t; // trainer_logic.h; trainer.h must not include it
+}
 
 // ==================== DATA STRUCTURES ====================
 
@@ -24,11 +28,10 @@ enum class timing_challenge_mode_t : int32_t
 	PRO = 4      // ±1 second
 };
 
-// Path and Timing are independent, combinable flags. Running them together is the
-// point: routing to a called target while tracking respawns you only heard is the
-// dual-task load an actual duel imposes, and practising either one alone does not
-// build it. Persisted as an int cvar, so legacy values 0/1/2 keep their meaning and
-// 3 means both.
+// Path and Timing are bit flags only because Ghost Duel runs on the timing trainer.
+// Only one trainer runs at a time (MapTrainer_DisableOtherTrainers), so PATH and TIMING
+// are never set together any more. Persisted as an int cvar; an old saved 3 (both) is
+// resolved to PATH at map load by trainer_logic::ResolveExclusiveTrainer.
 enum class trainer_mode_t : int32_t
 {
 	OFF = 0,
@@ -166,7 +169,7 @@ struct map_trainer_t
 	bool powerups_enabled;
 	// Speedometer
 	bool speedometer_enabled;
-	// Path or Timing trainer (mutually exclusive)
+	// Path or Timing trainer (exclusive, like every trainer - see trainer_mode_t)
 	trainer_mode_t trainer_mode;
 	// Combine health packs toggle
 	bool combine_health_packs;
@@ -300,6 +303,14 @@ void MapTrainer_LoadConfig(); // game.map_trainer_config -> level.map_trainer (i
 bool MapTrainer_IsModeActive(trainer_mode_t flag);
 void MapTrainer_SetModeFlag(trainer_mode_t flag, bool enabled, edict_t *notify = nullptr);
 void MapTrainer_ValidateTrainerMode();
+// Only one trainer runs at a time: switches off every trainer except `keep` (Path,
+// Timing, Ghost Duel, bhop, Spawn), with the usual "X disabled." messages to notify.
+// Call it before enabling a trainer. It only ever disables, so it cannot recurse.
+void MapTrainer_DisableOtherTrainers(trainer_logic::trainer_kind_t keep, edict_t *notify);
+// Weapons stay and random items stop items vanishing and respawning as themselves,
+// which every trainer and ranked Item Runs depend on. Forces both off; announce tells
+// players when something had turned one on mid-map.
+void MapTrainer_EnforceItemRules(bool announce);
 
 // Per-frame trainer tick (deferred spawn-trainer auto-resume)
 void MapTrainer_RunFrame();

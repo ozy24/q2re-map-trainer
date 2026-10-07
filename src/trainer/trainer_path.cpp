@@ -459,7 +459,7 @@ void MapTrainer_ShowWelcomeMessage(edict_t *player)
 	{
 		gi.LocClient_Print(player, PRINT_CENTER, "No items found in map.\nPath trainer disabled.");
 		// Auto-disable path training if items weren't found (persist so it doesn't re-arm
-		// next map). Clears only the PATH flag - any timing/ghost work keeps running.
+		// next map). Trainers are exclusive, so nothing else was running alongside it.
 		MapTrainer_SetModeFlag(trainer_mode_t::PATH, false);
 	}
 	else

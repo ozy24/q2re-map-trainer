@@ -123,12 +123,129 @@ void MapTrainer_SetModeFlag(trainer_mode_t flag, bool enabled, edict_t *notify)
 	MapTrainer_SaveConfig();
 }
 
+// ==================== EXCLUSIVE TRAINERS ====================
+
+void MapTrainer_DisableOtherTrainers(trainer_logic::trainer_kind_t keep, edict_t *notify)
+{
+	using trainer_logic::trainer_kind_t;
+
+	// Ghost first: its teardown prints the session summary, which reads timing state.
+	if (keep != trainer_kind_t::GHOST && level.map_trainer.ghost_enabled)
+		MapTrainer_SetGhostEnabled(false, notify);
+
+	if (keep != trainer_kind_t::PATH)
+		MapTrainer_SetModeFlag(trainer_mode_t::PATH, false, notify);
+
+	// Ghost Duel's timings run through the timing trainer, so it keeps TIMING.
+	if (keep != trainer_kind_t::TIMING && keep != trainer_kind_t::GHOST)
+		MapTrainer_SetModeFlag(trainer_mode_t::TIMING, false, notify);
+
+	if (keep != trainer_kind_t::BHOP && level.map_trainer.bhop_enabled)
+	{
+		level.map_trainer.bhop_enabled = false;
+		if (notify)
+			gi.LocClient_Print(notify, PRINT_HIGH, "Bhop trainer disabled.");
+	}
+
+	if (keep != trainer_kind_t::SPAWN)
+	{
+		if (level.map_trainer.spawn_trainer_enabled)
+		{
+			MapTrainer_DisableSpawnTrainer();
+			if (notify)
+				gi.LocClient_Print(notify, PRINT_HIGH, "Spawn Trainer disabled.");
+		}
+		level.map_trainer.spawn_trainer_intent = false;
+		level.map_trainer.spawn_trainer_resume_pending = false;
+	}
+
+	MapTrainer_SaveConfig();
+}
+
+// Saved settings can still ask for several trainers (an old trainer_mode 3, or a ghost
+// saved next to the spawn trainer, whose bot used to come back beside the ghost). Keep
+// the one with priority and clear the rest. Runs before anything is built for the map,
+// so clearing config fields is enough; there is nothing to tear down yet.
+static void MapTrainer_NormalizeSavedTrainers()
+{
+	using trainer_logic::trainer_kind_t;
+
+	trainer_logic::trainer_selection_t saved;
+	saved.path = MapTrainer_IsModeActive(trainer_mode_t::PATH);
+	saved.timing = MapTrainer_IsModeActive(trainer_mode_t::TIMING);
+	saved.ghost = level.map_trainer.ghost_enabled;
+	saved.bhop = level.map_trainer.bhop_enabled;
+	saved.spawn = level.map_trainer.spawn_trainer_intent;
+	const trainer_kind_t keep = trainer_logic::ResolveExclusiveTrainer(saved);
+
+	trainer_mode_t mode = trainer_mode_t::OFF;
+	if (keep == trainer_kind_t::PATH)
+		mode = trainer_mode_t::PATH;
+	else if (keep == trainer_kind_t::TIMING || keep == trainer_kind_t::GHOST)
+		mode = trainer_mode_t::TIMING;
+
+	const bool changed = level.map_trainer.trainer_mode != mode ||
+		level.map_trainer.ghost_enabled != (keep == trainer_kind_t::GHOST) ||
+		level.map_trainer.bhop_enabled != (keep == trainer_kind_t::BHOP) ||
+		level.map_trainer.spawn_trainer_intent != (keep == trainer_kind_t::SPAWN);
+	if (!changed)
+		return;
+
+	level.map_trainer.trainer_mode = mode;
+	level.map_trainer.ghost_enabled = keep == trainer_kind_t::GHOST;
+	level.map_trainer.bhop_enabled = keep == trainer_kind_t::BHOP;
+	level.map_trainer.spawn_trainer_intent = keep == trainer_kind_t::SPAWN;
+	TrainerLog("CORE", "saved settings asked for several trainers; kept %d only", static_cast<int32_t>(keep));
+	MapTrainer_SaveConfig();
+}
+
+// ==================== ITEM RULES ====================
+
+void MapTrainer_EnforceItemRules(bool announce)
+{
+	struct item_rule_t
+	{
+		const char *name;
+		cvar_t *cvar;
+		const char *message;
+	};
+	// The cvar pointers are null until InitGame registers them, which happens after
+	// MapTrainer_RegisterCvars; those calls force the value by name instead.
+	const item_rule_t rules[] = {
+		{ "g_dm_weapons_stay", g_dm_weapons_stay,
+			"Weapons stay is not allowed in the Map Trainer: items must disappear and respawn." },
+		{ "g_dm_random_items", g_dm_random_items,
+			"Random items is not allowed in the Map Trainer: items must respawn as themselves." },
+	};
+
+	for (const item_rule_t &rule : rules)
+	{
+		if (rule.cvar && !rule.cvar->integer)
+			continue;
+
+		gi.cvar_set(rule.name, "0");
+		if (!announce || !rule.cvar)
+			continue;
+
+		TrainerLog("CORE", "%s was turned on; forced back off", rule.name);
+		for (uint32_t i = 0; i < game.maxclients; i++)
+		{
+			edict_t *player = &g_edicts[1 + i];
+			if (player->inuse && player->client)
+				gi.LocClient_Print(player, PRINT_HIGH, rule.message);
+		}
+	}
+}
+
 // ==================== PER-FRAME DISPATCH ====================
 
 // Single entry point called once per server frame from g_main.cpp. Each subsystem
 // owns its own early-out, so order here is just "cheapest first".
 void MapTrainer_RunFrame()
 {
+	// Two int reads a frame: catches the console, rcon or the CTF admin menu turning
+	// weapons stay or random items on mid-map within one frame.
+	MapTrainer_EnforceItemRules(true);
 	MapTrainer_SpawnTrainerRunFrame();
 	MapTrainer_GhostRunFrame();
 	MapTrainer_PathRunFrame();
@@ -138,8 +255,8 @@ void MapTrainer_RunFrame()
 
 void MapTrainer_Init()
 {
-	// Force weapon stay off for training mode
-	gi.cvar_set("g_dm_weapons_stay", "0");
+	// Weapons stay and random items are never allowed (see MapTrainer_EnforceItemRules).
+	MapTrainer_EnforceItemRules(false);
 	
 	level.map_trainer.items = nullptr;
 	level.map_trainer.item_count = 0;
@@ -182,6 +299,7 @@ void MapTrainer_Init()
 	MapTrainer_LoadFromCvars();
 	MapTrainer_LoadConfig();
 	MapTrainer_ValidateTrainerMode();
+	MapTrainer_NormalizeSavedTrainers();
 
 	// Item Run records are per map; load this map's table whether or not path mode is on,
 	// so the Run Records menu and trainer_runs work at any time.
@@ -191,7 +309,7 @@ void MapTrainer_Init()
 	// tells us whether the ghost should be running at all on this map).
 	MapTrainer_InitGhost();
 	if (level.map_trainer.ghost_enabled)
-		MapTrainer_SetGhostEnabled(true, nullptr); // re-asserts TIMING mode as a side effect
+		MapTrainer_SetGhostEnabled(true, nullptr); // keeps TIMING on; the others were cleared above
 
 	// Re-establish per-map runtime state from the (possibly restored) config.
 	// Item arrays were freed with TAG_LEVEL before this runs and items is now nullptr,

@@ -142,6 +142,31 @@ void test_path_target_skip()
 		"no previous type never skipped");
 }
 
+void test_exclusive_trainers()
+{
+	using trainer_logic::trainer_kind_t;
+	trainer_logic::trainer_selection_t s;
+	expect_true(trainer_logic::ResolveExclusiveTrainer(s) == trainer_kind_t::NONE, "nothing selected resolves to none");
+
+	s = {}; s.path = true;
+	expect_true(trainer_logic::ResolveExclusiveTrainer(s) == trainer_kind_t::PATH, "path alone survives");
+	s = {}; s.timing = true;
+	expect_true(trainer_logic::ResolveExclusiveTrainer(s) == trainer_kind_t::TIMING, "timing alone survives");
+	s = {}; s.ghost = true;
+	expect_true(trainer_logic::ResolveExclusiveTrainer(s) == trainer_kind_t::GHOST, "ghost alone survives");
+	s = {}; s.bhop = true;
+	expect_true(trainer_logic::ResolveExclusiveTrainer(s) == trainer_kind_t::BHOP, "bhop alone survives");
+	s = {}; s.spawn = true;
+	expect_true(trainer_logic::ResolveExclusiveTrainer(s) == trainer_kind_t::SPAWN, "spawn alone survives");
+
+	s = {}; s.path = true; s.timing = true;
+	expect_true(trainer_logic::ResolveExclusiveTrainer(s) == trainer_kind_t::PATH, "legacy trainer_mode 3 loads as path");
+	s = {}; s.ghost = true; s.timing = true; s.spawn = true; s.bhop = true; s.path = true;
+	expect_true(trainer_logic::ResolveExclusiveTrainer(s) == trainer_kind_t::GHOST, "ghost beats everything");
+	s = {}; s.spawn = true; s.bhop = true;
+	expect_true(trainer_logic::ResolveExclusiveTrainer(s) == trainer_kind_t::SPAWN, "spawn beats bhop");
+}
+
 void test_item_run()
 {
 	const bool none[] = { false, false, false };
@@ -596,6 +621,7 @@ int main()
 	test_friendly_name_from_pickup();
 	test_timing_challenge();
 	test_path_target_skip();
+	test_exclusive_trainers();
 	test_item_run();
 	test_run_records();
 	test_path_item_inclusion();

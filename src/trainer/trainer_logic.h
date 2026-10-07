@@ -47,6 +47,35 @@ bool ShouldSkipUniqueTypeForPick(int32_t unique_item_count, const char *unique_c
 
 bool IsPathTrainingItemIncluded(const char *class_name, bool stimpacks_enabled, bool armor_shards_enabled);
 
+// ==================== EXCLUSIVE TRAINERS ====================
+//
+// Only one trainer runs at a time. Ghost Duel uses the timing trainer internally, but
+// that is part of Ghost Duel, not a second trainer. The speedometer, savepos/loadpos and
+// each trainer's own options are not trainers and are never switched off by this rule.
+enum class trainer_kind_t : int32_t
+{
+	NONE = 0,
+	PATH,
+	TIMING,
+	GHOST,
+	BHOP,
+	SPAWN
+};
+
+struct trainer_selection_t
+{
+	bool path = false;
+	bool timing = false;
+	bool ghost = false;
+	bool bhop = false;
+	bool spawn = false;
+};
+
+// The one trainer that survives when saved settings ask for several (an old
+// trainer_mode 3, or a ghost saved alongside the spawn trainer). Priority:
+// ghost > path > timing > spawn > bhop.
+trainer_kind_t ResolveExclusiveTrainer(const trainer_selection_t &selection);
+
 // ==================== ITEM RUN ====================
 //
 // Item Run is path mode with respawns held: every item collected stays gone until the
