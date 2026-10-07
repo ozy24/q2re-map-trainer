@@ -21,6 +21,10 @@ static_assert(trainer_logic::IF_HEALTH == static_cast<uint32_t>(IF_HEALTH));
 
 static void MapTrainer_TeardownPathMode()
 {
+	// Held Item Run respawns live in the item list; bring them back before it goes.
+	MapTrainer_ReleaseRunItems();
+	level.map_trainer.run_release_time = 0_ms;
+
 	if (level.map_trainer.items)
 	{
 		gi.TagFree(level.map_trainer.items);
@@ -127,6 +131,7 @@ void MapTrainer_RunFrame()
 {
 	MapTrainer_SpawnTrainerRunFrame();
 	MapTrainer_GhostRunFrame();
+	MapTrainer_PathRunFrame();
 }
 
 // ==================== CORE INITIALIZATION ====================
@@ -144,6 +149,10 @@ void MapTrainer_Init()
 	level.map_trainer.first_pickup = true;
 	level.map_trainer.welcome_message_shown = false;
 	level.map_trainer.welcome_message_time = 0_ms;
+	level.map_trainer.run_number = 0;
+	level.map_trainer.run_start_time = 0_ms;
+	level.map_trainer.run_best_time = 0_ms;
+	level.map_trainer.run_release_time = 0_ms;
 
 	// Per-map runtime state (config fields loaded from cvars below)
 	level.map_trainer.timing_debug_enabled = false;
@@ -213,6 +222,7 @@ void MapTrainer_SaveConfig()
 	cfg.combine_health_packs = level.map_trainer.combine_health_packs;
 	cfg.path_stimpacks_enabled = level.map_trainer.path_stimpacks_enabled;
 	cfg.path_armor_shards_enabled = level.map_trainer.path_armor_shards_enabled;
+	cfg.path_run_mode = level.map_trainer.path_run_mode;
 	cfg.free_collect_enabled = level.map_trainer.free_collect_enabled;
 	cfg.timing_debug_enabled = level.map_trainer.timing_debug_enabled;
 	cfg.timing_major_items_only = level.map_trainer.timing_major_items_only;
@@ -250,6 +260,7 @@ void MapTrainer_LoadConfig()
 	level.map_trainer.combine_health_packs = cfg.combine_health_packs;
 	level.map_trainer.path_stimpacks_enabled = cfg.path_stimpacks_enabled;
 	level.map_trainer.path_armor_shards_enabled = cfg.path_armor_shards_enabled;
+	level.map_trainer.path_run_mode = cfg.path_run_mode;
 	level.map_trainer.free_collect_enabled = cfg.free_collect_enabled;
 	level.map_trainer.timing_debug_enabled = cfg.timing_debug_enabled;
 	level.map_trainer.timing_major_items_only = cfg.timing_major_items_only;

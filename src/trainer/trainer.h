@@ -43,6 +43,9 @@ struct map_trainer_item_t
 	char class_name[64];
 	vec3_t position;
 	edict_t *ent; // cached at build; stable for stock DM items (respawn toggles SVF_RESPAWNING). Rebuilt each map/toggle.
+	// Item Run: taken during the current run, so its respawn is held until the run
+	// completes. Cleared by a rebuild, which is why every rebuild releases held items first.
+	bool collected_in_run;
 };
 
 // Bodiless simulated duel opponent. It runs a major-item cycle, genuinely consumes
@@ -170,6 +173,14 @@ struct map_trainer_t
 	// Path training: include stimpacks / armor shards as targets
 	bool path_stimpacks_enabled;
 	bool path_armor_shards_enabled;
+	// Item Run: path mode with respawns held. Every item collected stays gone until the
+	// whole set has been collected; the run is timed, then everything comes back.
+	// path_run_mode is config (mirrored); the rest is per-map runtime.
+	bool path_run_mode;
+	int32_t run_number;       // runs started on this map
+	gtime_t run_start_time;   // first pickup of the current run
+	gtime_t run_best_time;    // fastest completed run on this map; 0 = none yet
+	gtime_t run_release_time; // a finished run's items come back at this time; 0 = none pending
 	// Free collect toggle - allows picking up armor even at max
 	bool free_collect_enabled;
 	// Debug prints toggle for timing trainer
@@ -255,6 +266,7 @@ struct map_trainer_config_t
 	bool combine_health_packs;
 	bool path_stimpacks_enabled;
 	bool path_armor_shards_enabled;
+	bool path_run_mode;
 	bool free_collect_enabled;
 	bool timing_debug_enabled;
 	bool timing_major_items_only;
@@ -316,6 +328,11 @@ bool MapTrainer_IsItemAvailable(int32_t item_index);
 void MapTrainer_PickNewTarget();
 bool MapTrainer_IsTargetItem(edict_t *ent);
 void MapTrainer_OnItemPickup(edict_t *item_ent, edict_t *player);
+// Item Run: holds collected items' respawns and brings a finished run's items back.
+void MapTrainer_PathRunFrame();
+// Respawns every item held by the current run now and clears the run's collected
+// marks. Call before anything frees or rebuilds the item list.
+void MapTrainer_ReleaseRunItems();
 
 // UI
 void MapTrainer_ShowWelcomeMessage(edict_t *player);

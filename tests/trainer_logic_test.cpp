@@ -142,6 +142,32 @@ void test_path_target_skip()
 		"no previous type never skipped");
 }
 
+void test_item_run()
+{
+	const bool none[] = { false, false, false };
+	const bool some[] = { true, false, true };
+	const bool all[] = { true, true, true };
+	expect_true(trainer_logic::RunItemsRemaining(none, 3) == 3, "fresh run has every item remaining");
+	expect_true(trainer_logic::RunItemsRemaining(some, 3) == 1, "collected items are not remaining");
+	expect_true(trainer_logic::RunItemsRemaining(all, 3) == 0, "run complete when all collected");
+	expect_true(trainer_logic::RunItemsRemaining(nullptr, 3) == 0, "no item list has nothing remaining");
+
+	char buf[32];
+	trainer_logic::FormatRunTime(83456, buf, sizeof(buf));
+	expect_str_eq(buf, "1:23.4", "run time formats as m:ss.t");
+	trainer_logic::FormatRunTime(5099, buf, sizeof(buf));
+	expect_str_eq(buf, "0:05.0", "tenths round down, seconds zero-padded");
+	trainer_logic::FormatRunTime(600000, buf, sizeof(buf));
+	expect_str_eq(buf, "10:00.0", "minutes are not padded or capped");
+	trainer_logic::FormatRunTime(-50, buf, sizeof(buf));
+	expect_str_eq(buf, "0:00.0", "negative durations clamp to zero");
+
+	expect_true(trainer_logic::IsNewBestRun(90000, 0), "first run on a map is a best");
+	expect_true(trainer_logic::IsNewBestRun(80000, 90000), "faster run is a best");
+	expect_false(trainer_logic::IsNewBestRun(90000, 90000), "equal run is not a new best");
+	expect_false(trainer_logic::IsNewBestRun(95000, 90000), "slower run is not a best");
+}
+
 void test_path_item_inclusion()
 {
 	expect_true(trainer_logic::IsPathTrainingItemIncluded("item_health_small", true, true),
@@ -514,6 +540,7 @@ int main()
 	test_friendly_name_from_pickup();
 	test_timing_challenge();
 	test_path_target_skip();
+	test_item_run();
 	test_path_item_inclusion();
 	test_estimate_travel_seconds();
 	test_ghost_item_value();

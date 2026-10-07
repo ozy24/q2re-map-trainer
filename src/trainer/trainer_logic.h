@@ -47,6 +47,20 @@ bool ShouldSkipUniqueTypeForPick(int32_t unique_item_count, const char *unique_c
 
 bool IsPathTrainingItemIncluded(const char *class_name, bool stimpacks_enabled, bool armor_shards_enabled);
 
+// ==================== ITEM RUN ====================
+//
+// Item Run is path mode with respawns held: every item collected stays gone until the
+// whole set has been collected, then the run is timed and everything comes back.
+
+// How many of the run's items are still to collect.
+int32_t RunItemsRemaining(const bool *collected, int32_t count);
+
+// Run duration as m:ss.t (tenths, rounded down), e.g. 83456 ms -> "1:23.4".
+void FormatRunTime(int64_t run_ms, char *out, size_t out_size);
+
+// best_ms <= 0 means no previous run on this map, so any finished run is a best.
+bool IsNewBestRun(int64_t run_ms, int64_t best_ms);
+
 // ==================== CONTROL STATE ====================
 //
 // Declared before the ghost section because the ghost's routing policy is keyed on it.

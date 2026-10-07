@@ -10,6 +10,9 @@ namespace trainer_config
 {
 // Item path training
 constexpr float PATH_ITEM_POSITION_EPSILON = 32.0f;
+// Item Run: pause between "run complete" and the items coming back, so the result can be
+// read before the next run's messages replace it.
+constexpr float ITEM_RUN_RESPAWN_DELAY_SEC = 3.0f;
 
 // Item timing training
 constexpr float TIMING_ITEM_PICKUP_RADIUS = 64.0f;

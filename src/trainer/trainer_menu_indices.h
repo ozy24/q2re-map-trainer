@@ -40,6 +40,7 @@ enum class path_entry_t : int32_t
 	COMBINE_HEALTH,
 	STIMPACKS,
 	ARMOR_SHARDS,
+	RUN_MODE,
 	BLANK2,
 	BACK,
 	BLANK3,

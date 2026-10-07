@@ -27,6 +27,10 @@ void MapTrainer_RestartPathTraining()
 {
 	if (MapTrainer_IsModeActive(trainer_mode_t::PATH))
 	{
+		// Item Run holds respawns on entries in the list being rebuilt; release them first.
+		MapTrainer_ReleaseRunItems();
+		level.map_trainer.run_release_time = 0_ms;
+
 		// Rebuild the item list with new category settings
 		MapTrainer_BuildItemList(level.mapname);
 		
@@ -117,6 +121,20 @@ void MapTrainer_TogglePathArmorShards(edict_t *ent, pmenuhnd_t *p)
 	PMenu_Update(ent);
 }
 
+void MapTrainer_TogglePathRunMode(edict_t *ent, pmenuhnd_t *p)
+{
+	level.map_trainer.path_run_mode = !level.map_trainer.path_run_mode;
+	// Restart either way: turning it on starts a clean run at the next pickup, turning
+	// it off releases everything the run was holding.
+	MapTrainer_RestartPathTraining();
+	MapTrainer_SaveConfig();
+	if (level.map_trainer.path_run_mode)
+		gi.LocClient_Print(ent, PRINT_HIGH, "Item Run on: collected items stay gone until you have them all, then the run is timed and they all respawn. Pick up an item to begin.");
+	else
+		gi.LocClient_Print(ent, PRINT_HIGH, "Item Run off: items respawn normally.");
+	PMenu_Update(ent);
+}
+
 void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 {
 	if (!ent->client->menu)
@@ -138,6 +156,7 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 		Q_strlcpy(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text, G_Fmt("Combine Health Packs: {}", level.map_trainer.combine_health_packs ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::STIMPACKS)].text, G_Fmt("Stimpacks: {}", level.map_trainer.path_stimpacks_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::STIMPACKS)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::ARMOR_SHARDS)].text, G_Fmt("Armor Shards: {}", level.map_trainer.path_armor_shards_enabled ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::ARMOR_SHARDS)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::RUN_MODE)].text, G_Fmt("Item Run (no respawn): {}", level.map_trainer.path_run_mode ? "ON" : "OFF").data(), sizeof(entries[entry_index(path_entry_t::RUN_MODE)].text));
 		
 		// Re-enable the function pointers
 		entries[entry_index(path_entry_t::WEAPONS)].SelectFunc = MapTrainer_ToggleWeapons;
@@ -148,6 +167,7 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 		entries[entry_index(path_entry_t::COMBINE_HEALTH)].SelectFunc = MapTrainer_ToggleCombineHealthPacks;
 		entries[entry_index(path_entry_t::STIMPACKS)].SelectFunc = MapTrainer_TogglePathStimpacks;
 		entries[entry_index(path_entry_t::ARMOR_SHARDS)].SelectFunc = MapTrainer_TogglePathArmorShards;
+		entries[entry_index(path_entry_t::RUN_MODE)].SelectFunc = MapTrainer_TogglePathRunMode;
 	}
 	else
 	{
@@ -160,6 +180,7 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 		Q_strlcpy(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text, "", sizeof(entries[entry_index(path_entry_t::COMBINE_HEALTH)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::STIMPACKS)].text, "", sizeof(entries[entry_index(path_entry_t::STIMPACKS)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::ARMOR_SHARDS)].text, "", sizeof(entries[entry_index(path_entry_t::ARMOR_SHARDS)].text));
+		Q_strlcpy(entries[entry_index(path_entry_t::RUN_MODE)].text, "", sizeof(entries[entry_index(path_entry_t::RUN_MODE)].text));
 		Q_strlcpy(entries[entry_index(path_entry_t::BLANK2)].text, "", sizeof(entries[entry_index(path_entry_t::BLANK2)].text));
 		
 		// Disable the function pointers
@@ -171,6 +192,7 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 		entries[entry_index(path_entry_t::COMBINE_HEALTH)].SelectFunc = nullptr;
 		entries[entry_index(path_entry_t::STIMPACKS)].SelectFunc = nullptr;
 		entries[entry_index(path_entry_t::ARMOR_SHARDS)].SelectFunc = nullptr;
+		entries[entry_index(path_entry_t::RUN_MODE)].SelectFunc = nullptr;
 	}
 }
 
@@ -186,6 +208,7 @@ pmenu_t maptrainer_itempathing_submenu[] = {
 	{ "Combine Health Packs: OFF", PMENU_ALIGN_LEFT, MapTrainer_ToggleCombineHealthPacks },
 	{ "Stimpacks: ON", PMENU_ALIGN_LEFT, MapTrainer_TogglePathStimpacks },
 	{ "Armor Shards: ON", PMENU_ALIGN_LEFT, MapTrainer_TogglePathArmorShards },
+	{ "Item Run (no respawn): OFF", PMENU_ALIGN_LEFT, MapTrainer_TogglePathRunMode },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },

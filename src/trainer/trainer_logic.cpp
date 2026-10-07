@@ -5,6 +5,7 @@
 
 #include <cmath>
 #include <cctype>
+#include <cstdio>
 #include <cstring>
 
 namespace trainer_logic
@@ -214,6 +215,40 @@ bool IsPathTrainingItemIncluded(const char *class_name, bool stimpacks_enabled, 
 		return armor_shards_enabled;
 
 	return true;
+}
+
+// ==================== ITEM RUN ====================
+
+int32_t RunItemsRemaining(const bool *collected, int32_t count)
+{
+	if (!collected || count <= 0)
+		return 0;
+
+	int32_t remaining = 0;
+	for (int32_t i = 0; i < count; i++)
+		if (!collected[i])
+			remaining++;
+	return remaining;
+}
+
+void FormatRunTime(int64_t run_ms, char *out, size_t out_size)
+{
+	if (!out || out_size == 0)
+		return;
+
+	if (run_ms < 0)
+		run_ms = 0;
+
+	const int64_t tenths = run_ms / 100;
+	const int64_t minutes = tenths / 600;
+	const int64_t seconds = (tenths / 10) % 60;
+	std::snprintf(out, out_size, "%lld:%02lld.%lld", static_cast<long long>(minutes),
+		static_cast<long long>(seconds), static_cast<long long>(tenths % 10));
+}
+
+bool IsNewBestRun(int64_t run_ms, int64_t best_ms)
+{
+	return best_ms <= 0 || run_ms < best_ms;
 }
 
 // ==================== GHOST DUEL OPPONENT ====================
