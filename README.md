@@ -11,6 +11,7 @@ Guides you through items on the map in a randomized sequence. Perfect for learni
 - Automatically detects all items from the map (no setup required!)
 - Shows you which item to collect next
 - Customizable: enable/disable weapons, ammo, health, armor, or powerups
+- **Item Run** option: items stay gone once collected until you have the whole set, then your time is shown and everything respawns for the next run
 - Great for learning new maps quickly
 
 ### ⏱️ **Item Timing Training**
@@ -113,6 +114,7 @@ Type `maptrainer` in the console (`~`) to open the trainer menu.
 **Tips:**
 - Disable item types you don't care about (e.g., turn off ammo for faster routes)
 - Use "Combine Health Packs" to treat all health packs as one target
+- Turn on **"Item Run (no respawn)"** to clear the map: nothing you collect comes back until every item in the enabled categories is taken. The run is timed from your first pickup to your last, the result (and your best on this map) is shown, and three seconds later every item respawns so you can go again
 - Item categories follow the SDK item registry (`IF_WEAPON`, `IF_HEALTH`, etc.); mod items with proper flags respect the matching toggle even if their classname is unconventional
 - Great for learning optimal item collection routes
 
@@ -210,6 +212,7 @@ These are written automatically when you change options in the trainer menu. The
 | `trainer_armor` | `1` | Path trainer: include armor |
 | `trainer_powerups` | `1` | Path trainer: include powerups |
 | `trainer_combine_health` | `0` | Path trainer: combine health packs |
+| `trainer_path_run_mode` | `0` | Path trainer: Item Run (collected items don't respawn until all are taken) |
 | `trainer_speedometer` | `1` | Speedometer enabled |
 | `trainer_bhop` | `0` | Bhop consistency trainer |
 | `trainer_free_collect` | `1` | Timing: free collect at max armor |
@@ -310,6 +313,9 @@ Copyright (c) ZeniMax Media Inc.
 ---
 
 ## 📝 Changelog
+
+### Unreleased
+- **Item Path Training** — Item Run mode: collected items stay gone until you have the whole set, then the run is timed, your best on the map is tracked, and every item respawns for the next run
 
 ### v1.2.3 (2026-06-22)
 - **Item Path Training** — optional Stimpacks and Armor Shards toggles to exclude minor pickups from path targets
