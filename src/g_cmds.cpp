@@ -1744,6 +1744,8 @@ void ClientCommand(edict_t *ent)
 		Cmd_WarpSpawn_f(ent);
 	else if (Q_strcasecmp(cmd, "trainer_session") == 0)
 		Cmd_TrainerSession_f(ent);
+	else if (Q_strcasecmp(cmd, "trainer_runs") == 0) // [Map Trainer] Item Run records
+		Cmd_TrainerRuns_f(ent);
 	else if (Q_strcasecmp(cmd, "trainer_navcheck") == 0)
 		Cmd_TrainerNavCheck_f(ent);
 #ifndef KEX_Q2_GAME

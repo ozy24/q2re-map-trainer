@@ -246,8 +246,42 @@ static void MapTrainer_CompleteRun()
 	else
 		G_FmtTo(best_line, "Best: {}", best_time);
 
+	// Save the run. Only runs over the full item set are comparable, so only those rank.
+	const trainer_logic::category_toggles_t toggles = {
+		level.map_trainer.weapons_enabled, level.map_trainer.ammo_enabled, level.map_trainer.health_enabled,
+		level.map_trainer.armor_enabled, level.map_trainer.powerups_enabled };
+	const bool ranked = trainer_logic::IsRunRanked(toggles, level.map_trainer.path_stimpacks_enabled,
+		level.map_trainer.path_armor_shards_enabled);
+	const int32_t rank = MapTrainer_RecordsAddRun(run_ms, level.map_trainer.item_count, ranked);
+
+	char record_time[32];
+	trainer_logic::FormatRunTime(MapTrainer_RecordsBestMs(), record_time, sizeof(record_time));
+	char result_lines[128];
+	char console_rank[48];
+	if (!ranked)
+	{
+		// Unranked runs still get the session best on this map.
+		G_FmtTo(result_lines, "Unranked: turn every item type on to rank\n{}", best_line);
+		Q_strlcpy(console_rank, "unranked", sizeof(console_rank));
+	}
+	else if (rank == 1)
+	{
+		Q_strlcpy(result_lines, "New map record!", sizeof(result_lines));
+		Q_strlcpy(console_rank, "ranked #1, map record", sizeof(console_rank));
+	}
+	else if (rank > 0)
+	{
+		G_FmtTo(result_lines, "#{} on {} (record {})", rank, level.mapname, record_time);
+		G_FmtTo(console_rank, "ranked #{}", rank);
+	}
+	else
+	{
+		G_FmtTo(result_lines, "Record: {}", record_time);
+		G_FmtTo(console_rank, "outside the top {}", trainer_config::RUN_RECORDS_MAX);
+	}
+
 	MapTrainer_PrintCenterToAll(G_Fmt("Run {} complete!\n{} items in {}\n{}\nItems respawn in {:.0f} seconds",
-		level.map_trainer.run_number, level.map_trainer.item_count, run_time, best_line,
+		level.map_trainer.run_number, level.map_trainer.item_count, run_time, result_lines,
 		trainer_config::ITEM_RUN_RESPAWN_DELAY_SEC).data());
 
 	// A console line too, so a session's runs can be compared afterwards.
@@ -256,12 +290,12 @@ static void MapTrainer_CompleteRun()
 		edict_t *player = &g_edicts[1 + i];
 		if (!player->inuse || !player->client)
 			continue;
-		gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("Item run {} on {}: {} items in {}{}",
+		gi.LocClient_Print(player, PRINT_HIGH, G_Fmt("Item run {} on {}: {} items in {} - {}",
 			level.map_trainer.run_number, level.mapname, level.map_trainer.item_count, run_time,
-			new_best ? " (new best)" : "").data());
+			console_rank).data());
 	}
-	TrainerLog("RUN", "run %d complete: %d items in %s%s", level.map_trainer.run_number,
-		level.map_trainer.item_count, run_time, new_best ? " (new best)" : "");
+	TrainerLog("RUN", "run %d complete: %d items in %s (%s)", level.map_trainer.run_number,
+		level.map_trainer.item_count, run_time, console_rank);
 
 	level.map_trainer.current_target_index = -1;
 	level.map_trainer.previous_target_index = -1;

@@ -183,6 +183,10 @@ void MapTrainer_Init()
 	MapTrainer_LoadConfig();
 	MapTrainer_ValidateTrainerMode();
 
+	// Item Run records are per map; load this map's table whether or not path mode is on,
+	// so the Run Records menu and trainer_runs work at any time.
+	MapTrainer_RecordsLoad();
+
 	// Ghost state is per-map runtime and must be reset after config load (which is what
 	// tells us whether the ghost should be running at all on this map).
 	MapTrainer_InitGhost();

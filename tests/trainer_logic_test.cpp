@@ -168,6 +168,62 @@ void test_item_run()
 	expect_false(trainer_logic::IsNewBestRun(95000, 90000), "slower run is not a best");
 }
 
+void test_run_records()
+{
+	trainer_logic::category_toggles_t all_on;
+	expect_true(trainer_logic::IsRunRanked(all_on, true, true), "every item on is ranked");
+	expect_false(trainer_logic::IsRunRanked(all_on, false, true), "stimpacks off is unranked");
+	expect_false(trainer_logic::IsRunRanked(all_on, true, false), "armor shards off is unranked");
+	trainer_logic::category_toggles_t no_ammo;
+	no_ammo.ammo = false;
+	expect_false(trainer_logic::IsRunRanked(no_ammo, true, true), "a category off is unranked");
+
+	char line[128];
+	trainer_logic::FormatRunRecordLine("2026-10-07 04:35:12", "q2dm1", 48, 83456, true, line, sizeof(line));
+	expect_str_eq(line, "2026-10-07 04:35:12\tq2dm1\t48\t83456\t1", "record line format");
+
+	char map[64];
+	trainer_logic::run_record_t record;
+	bool ranked = false;
+	expect_true(trainer_logic::ParseRunRecordLine(line, map, sizeof(map), &record, &ranked), "formatted line parses");
+	expect_str_eq(map, "q2dm1", "round trip keeps the map");
+	expect_str_eq(record.date, "2026-10-07 04:35:12", "round trip keeps the date");
+	expect_true(record.items == 48 && record.run_ms == 83456 && ranked, "round trip keeps items, time, ranked");
+	expect_true(trainer_logic::ParseRunRecordLine("2026-10-07 04:35:12\tq2dm8\t30\t61000\t0\r\n", map, sizeof(map),
+		&record, &ranked) && !ranked && record.run_ms == 61000, "CRLF line and unranked flag parse");
+
+	expect_false(trainer_logic::ParseRunRecordLine("# header", map, sizeof(map), &record, &ranked), "comment skipped");
+	expect_false(trainer_logic::ParseRunRecordLine("", map, sizeof(map), &record, &ranked), "blank skipped");
+	expect_false(trainer_logic::ParseRunRecordLine("2026-10-07\tq2dm1\t48\t83456", map, sizeof(map), &record, &ranked),
+		"missing field rejected");
+	expect_false(trainer_logic::ParseRunRecordLine("2026-10-07\tq2dm1\t48\tfast\t1", map, sizeof(map), &record, &ranked),
+		"non-numeric time rejected");
+	expect_false(trainer_logic::ParseRunRecordLine("2026-10-07\tq2dm1\t48\t83456\t2", map, sizeof(map), &record, &ranked),
+		"bad ranked flag rejected");
+	expect_false(trainer_logic::ParseRunRecordLine("2026-10-07\tq2dm1\t48\t83456\t1\textra", map, sizeof(map), &record,
+		&ranked), "extra field rejected");
+
+	trainer_logic::run_record_t table[3];
+	int32_t count = 0;
+	auto run = [](int64_t ms, const char *date)
+	{
+		trainer_logic::run_record_t r;
+		r.run_ms = ms;
+		std::snprintf(r.date, sizeof(r.date), "%s", date);
+		return r;
+	};
+	expect_true(trainer_logic::InsertTopRun(table, &count, 3, run(90000, "a")) == 1, "first run ranks 1");
+	expect_true(trainer_logic::InsertTopRun(table, &count, 3, run(80000, "b")) == 1, "faster run takes rank 1");
+	expect_true(trainer_logic::InsertTopRun(table, &count, 3, run(90000, "c")) == 3, "tie ranks below the earlier run");
+	expect_true(count == 3, "table fills to max");
+	expect_true(trainer_logic::InsertTopRun(table, &count, 3, run(95000, "d")) == 0, "too slow for a full table");
+	expect_true(trainer_logic::InsertTopRun(table, &count, 3, run(85000, "e")) == 2, "mid run inserts at its rank");
+	expect_true(count == 3, "full table stays at max");
+	expect_str_eq(table[0].date, "b", "order: fastest first");
+	expect_str_eq(table[1].date, "e", "order: inserted run second");
+	expect_str_eq(table[2].date, "a", "order: slowest kept run last, the tie dropped off");
+}
+
 void test_path_item_inclusion()
 {
 	expect_true(trainer_logic::IsPathTrainingItemIncluded("item_health_small", true, true),
@@ -541,6 +597,7 @@ int main()
 	test_timing_challenge();
 	test_path_target_skip();
 	test_item_run();
+	test_run_records();
 	test_path_item_inclusion();
 	test_estimate_travel_seconds();
 	test_ghost_item_value();

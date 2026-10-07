@@ -15,6 +15,7 @@ using trainer_menu::timing_entry_t;
 using trainer_menu::ghost_entry_t;
 using trainer_menu::jump_entry_t;
 using trainer_menu::spawn_entry_t;
+using trainer_menu::records_entry_t;
 
 // ==================== MENU SYSTEM ====================
 
@@ -194,6 +195,63 @@ void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent)
 		entries[entry_index(path_entry_t::ARMOR_SHARDS)].SelectFunc = nullptr;
 		entries[entry_index(path_entry_t::RUN_MODE)].SelectFunc = nullptr;
 	}
+}
+
+// ==================== RUN RECORDS PAGE ====================
+
+void MapTrainer_UpdateRunRecordsSubmenu(edict_t *ent)
+{
+	if (!ent->client->menu)
+		return;
+
+	pmenu_t *entries = ent->client->menu->entries;
+	Q_strlcpy(entries[entry_index(records_entry_t::HEADER)].text, G_Fmt("Run Records: {}", level.mapname).data(),
+		sizeof(entries[entry_index(records_entry_t::HEADER)].text));
+
+	const int32_t first_row = entry_index(records_entry_t::ROW1);
+	for (int32_t i = 0; i < trainer_config::RUN_RECORDS_MAX; i++)
+	{
+		pmenu_t &row = entries[first_row + i];
+		MapTrainer_RecordsFormatMenuRow(i, row.text, sizeof(row.text));
+		row.align = PMENU_ALIGN_LEFT;
+		row.SelectFunc = nullptr;
+	}
+	if (MapTrainer_RecordsCount() == 0)
+	{
+		Q_strlcpy(entries[first_row].text, "No ranked runs yet", sizeof(entries[first_row].text));
+		entries[first_row].align = PMENU_ALIGN_CENTER;
+	}
+}
+
+static_assert(entry_index(records_entry_t::ROW10) - entry_index(records_entry_t::ROW1) + 1 ==
+	trainer_config::RUN_RECORDS_MAX, "one Run Records row per kept record");
+
+pmenu_t maptrainer_runrecords_submenu[] = {
+	{ "Run Records", PMENU_ALIGN_CENTER, nullptr },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_LEFT, nullptr },
+	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Ranked: every item type on", PMENU_ALIGN_CENTER, nullptr },
+	{ "Back to Main Menu", PMENU_ALIGN_LEFT, MapTrainer_BackToMainMenu },
+	{ TRAINER_VERSION_DISPLAY, PMENU_ALIGN_CENTER, nullptr }
+};
+
+static_assert(sizeof(maptrainer_runrecords_submenu) / sizeof(pmenu_t) ==
+	entry_index(records_entry_t::VERSION) + 1, "Run Records rows match records_entry_t");
+
+void MapTrainer_OpenRunRecordsSubmenu(edict_t *ent, pmenuhnd_t *p)
+{
+	PMenu_Open(ent, maptrainer_runrecords_submenu, entry_index(records_entry_t::BACK),
+		sizeof(maptrainer_runrecords_submenu) / sizeof(pmenu_t), nullptr, MapTrainer_UpdateRunRecordsSubmenu);
 }
 
 pmenu_t maptrainer_itempathing_submenu[] = {
@@ -703,7 +761,7 @@ pmenu_t maptrainer_menu[] = {
 	{ "Spawn Trainer", PMENU_ALIGN_LEFT, MapTrainer_OpenSpawnTrainerSubmenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Speedometer: ON", PMENU_ALIGN_LEFT, MapTrainer_ToggleSpeedometer },
-	{ "", PMENU_ALIGN_CENTER, nullptr },
+	{ "Run Records", PMENU_ALIGN_LEFT, MapTrainer_OpenRunRecordsSubmenu },
 	{ "", PMENU_ALIGN_CENTER, nullptr },
 	{ "Close Menu", PMENU_ALIGN_LEFT, MapTrainer_MenuClose },
 	{ "", PMENU_ALIGN_CENTER, nullptr },

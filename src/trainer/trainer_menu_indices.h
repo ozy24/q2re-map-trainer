@@ -19,11 +19,32 @@ enum class main_entry_t : int32_t
 	SPAWN_TRAINER,
 	BLANK2,
 	SPEEDOMETER,
-	BLANK3,
+	RUN_RECORDS,
 	BLANK4,
 	CLOSE,
 	BLANK5,
 	FOOTER,
+	VERSION
+};
+
+// Item Run records page: the current map's fastest ranked runs (trainer_records.cpp).
+enum class records_entry_t : int32_t
+{
+	HEADER = 0,
+	BLANK1,
+	ROW1, // ROW1..ROW10 hold ranks 1-10; keep them contiguous
+	ROW2,
+	ROW3,
+	ROW4,
+	ROW5,
+	ROW6,
+	ROW7,
+	ROW8,
+	ROW9,
+	ROW10,
+	BLANK2,
+	HINT,
+	BACK,
 	VERSION
 };
 
@@ -125,4 +146,5 @@ constexpr int32_t entry_index(timing_entry_t e) { return static_cast<int32_t>(e)
 constexpr int32_t entry_index(ghost_entry_t e) { return static_cast<int32_t>(e); }
 constexpr int32_t entry_index(jump_entry_t e) { return static_cast<int32_t>(e); }
 constexpr int32_t entry_index(spawn_entry_t e) { return static_cast<int32_t>(e); }
+constexpr int32_t entry_index(records_entry_t e) { return static_cast<int32_t>(e); }
 } // namespace trainer_menu

@@ -333,6 +333,16 @@ void MapTrainer_PathRunFrame();
 // Respawns every item held by the current run now and clears the run's collected
 // marks. Call before anything frees or rebuilds the item list.
 void MapTrainer_ReleaseRunItems();
+// Item Run records (trainer_records.cpp): every run saved to maptrainer_runs.txt, the
+// current map's fastest ranked runs cached for the menu, the run message and trainer_runs.
+void MapTrainer_RecordsLoad(); // current map's table; called by MapTrainer_Init
+// Saves the run; returns its rank among ranked runs (1 = map record), 0 if unranked or too slow.
+int32_t MapTrainer_RecordsAddRun(int64_t run_ms, int32_t items, bool ranked);
+int32_t MapTrainer_RecordsCount();
+int64_t MapTrainer_RecordsBestMs(); // 0 when the map has no ranked runs
+void MapTrainer_RecordsFormatMenuRow(int32_t index, char *out, size_t out_size);
+void MapTrainer_RecordsPrint(edict_t *player, const char *map); // map null/empty = current
+void Cmd_TrainerRuns_f(edict_t *ent);
 
 // UI
 void MapTrainer_ShowWelcomeMessage(edict_t *player);
@@ -468,6 +478,9 @@ void MapTrainer_MenuClose(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_BackToMainMenu(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_UpdateMenu(edict_t *ent);
 
+// Item Run records page
+void MapTrainer_OpenRunRecordsSubmenu(edict_t *ent, pmenuhnd_t *p);
+void MapTrainer_UpdateRunRecordsSubmenu(edict_t *ent);
 // Path training submenu
 void MapTrainer_OpenItemPathingSubmenu(edict_t *ent, pmenuhnd_t *p);
 void MapTrainer_UpdateItemPathingSubmenu(edict_t *ent);
