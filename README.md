@@ -115,6 +115,7 @@ Type `maptrainer` in the console (`~`) to open the trainer menu.
 - Disable item types you don't care about (e.g., turn off ammo for faster routes)
 - Use "Combine Health Packs" to treat all health packs as one target
 - Turn on **"Item Run (no respawn)"** to clear the map: nothing you collect comes back until every item in the enabled categories is taken. The run is timed from your first pickup to your last, the result (and your best on this map) is shown, and three seconds later every item respawns so you can go again
+- **Run records:** every finished run is saved to `maptrainer_runs.txt` in the game's working directory (on Steam, the `rerelease` folder) with the date, map, item count and time. A run is **ranked** only when every item type is on, including Stimpacks and Armor Shards, so only like-for-like runs are compared. The ten fastest ranked runs per map are shown under **Main menu → Run Records**, in the run-complete message (new map record, or your placing), and by the `trainer_runs` command
 - Item categories follow the SDK item registry (`IF_WEAPON`, `IF_HEALTH`, etc.); mod items with proper flags respect the matching toggle even if their classname is unconventional
 - Great for learning optimal item collection routes
 
@@ -198,6 +199,7 @@ The trainer is built for **one human practitioner plus bots** on a solo or liste
 | `trainer_debug 1` | Enable debug logging to `trainer.log` |
 | `trainer_debug 0` | Disable debug logging |
 | `trainer_session` | Print the session summary (timing bias, per-item breakdown, control split) |
+| `trainer_runs [map]` | Print the ten fastest ranked Item Runs for this map (or the named map) |
 
 ### Persisted settings (archived cvars)
 
@@ -316,6 +318,7 @@ Copyright (c) ZeniMax Media Inc.
 
 ### Unreleased
 - **Item Path Training** — Item Run mode: collected items stay gone until you have the whole set, then the run is timed, your best on the map is tracked, and every item respawns for the next run
+- **Item Path Training** — Item Run records: every run saved to `maptrainer_runs.txt` with the date; top 10 ranked runs per map in the new Run Records menu page, the run-complete message and `trainer_runs`
 
 ### v1.2.3 (2026-06-22)
 - **Item Path Training** — optional Stimpacks and Armor Shards toggles to exclude minor pickups from path targets
