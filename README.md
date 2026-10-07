@@ -5,6 +5,8 @@ A training mod for Quake 2 Rerelease that helps players learn maps, improve item
 
 ## 🎯 Features
 
+**One trainer at a time.** Item Path, Item Timing, Ghost Duel, the Jump (bhop) trainer and the Spawn Trainer are exclusive: enabling one switches the others off. The speedometer and savepos/loadpos work alongside any of them. **Weapons stay and random items are always off** (`g_dm_weapons_stay`, `g_dm_random_items` are forced to `0`, even if changed mid-map), because every trainer relies on items disappearing and respawning as themselves.
+
 ### 📍 **Item Path Training**
 Guides you through items on the map in a randomized sequence. Perfect for learning optimal item routes and map layouts.
 
@@ -23,7 +25,6 @@ Provides precise feedback on your item respawn timing accuracy.
 - **Timing HUD** with weaning levels: Full countdowns → item names only → match clock only → off
 - **Match clock** to anchor your timing against, the way a real duel does
 - **Silent mode**: suppresses the per-attempt readout so you have to verify yourself; results arrive in the session summary instead
-- Runs **alongside** the Path Trainer if you want the split-attention drill
 - Perfect for competitive duel practice
 
 ### 👻 **Ghost Duel**
@@ -207,7 +208,7 @@ These are written automatically when you change options in the trainer menu. The
 
 | Cvar | Default | Description |
 |------|---------|-------------|
-| `trainer_mode` | `0` | Active trainers, combinable bit flags: `0` off, `1` path, `2` timing, `3` both |
+| `trainer_mode` | `0` | Item trainer: `0` off, `1` path, `2` timing (an old `3` loads as path; trainers are exclusive) |
 | `trainer_weapons` | `1` | Path trainer: include weapons |
 | `trainer_ammo` | `1` | Path trainer: include ammo |
 | `trainer_health` | `1` | Path trainer: include health |
@@ -223,7 +224,7 @@ These are written automatically when you change options in the trainer menu. The
 | `trainer_spawn_intent` | `0` | Spawn trainer enabled (auto-resumes on map load) |
 | `trainer_spawn_random` | `0` | Spawn order: `0` vanilla, `1` random |
 | `trainer_spawn_beacon` | `1` | Spawn trainer beacon beep |
-| `trainer_ghost` | `0` | Ghost Duel enabled (forces the timing trainer on; disables Path, Jump/bhop, and Spawn trainers) |
+| `trainer_ghost` | `0` | Ghost Duel enabled (runs on the timing trainer; like every trainer, switches the others off) |
 | `trainer_ghost_timings` | `1` | Ghost pickups start timing entries (the by-ear drill) |
 | `trainer_ghost_skill` | `3` | Arrival jitter: `0` precise, `1` ±1s, `2` ±2s, `3` ±4s |
 | `trainer_hud_level` | `3` | Timing HUD: `0` off, `1` clock only, `2` names only, `3` full |
@@ -257,7 +258,7 @@ Works with:
 
 ### Timing not working
 - Make sure **Timing Trainer** is enabled (check menu)
-- Path Training and Timing Training are mutually exclusive (enabling one disables the other)
+- Only one trainer runs at a time: enabling Path, Ghost Duel, Jump (bhop) or Spawn turns Timing off (and vice versa)
 - You need to be within pickup radius (64 units) of the item spawn for feedback
 
 ### Bhop trainer showing incorrect timing
@@ -317,6 +318,8 @@ Copyright (c) ZeniMax Media Inc.
 ## 📝 Changelog
 
 ### Unreleased
+- **All trainers** — one trainer at a time: enabling any trainer switches the others off (Path and Timing no longer combine); saved settings asking for several are resolved at map load, so a spawn bot no longer returns beside the ghost
+- **Item rules** — weapons stay and random items are locked off at game start, every map load and every frame, with a message if something turns one on
 - **Item Path Training** — Item Run mode: collected items stay gone until you have the whole set, then the run is timed, your best on the map is tracked, and every item respawns for the next run
 - **Item Path Training** — Item Run records: every run saved to `maptrainer_runs.txt` with the date; top 10 ranked runs per map in the new Run Records menu page, the run-complete message and `trainer_runs`
 
